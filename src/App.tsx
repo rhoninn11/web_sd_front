@@ -9,6 +9,7 @@ import { DatetimeExample } from './components/datetime-example/datetime-example'
 import { PopoverExample } from './components/popover-example/popover-example';
 import { Flow } from './components/org/other/flow';
 import classNames from 'classnames';
+import { TestingComponent } from './tmp/index';
 
 FocusStyleManager.onlyShowFocusOnTabs();
 
@@ -20,6 +21,7 @@ function App() {
             <SelectExample />
             <DatetimeExample />
             <PopoverExample />
+            <TestingComponent />
             {/* add inline width and height to div*/}
             <div style={{"width": "500px", "height": "500px"}}>
                 <Flow />

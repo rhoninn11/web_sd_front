@@ -10,11 +10,11 @@ import ReactFlow, {
 } from 'reactflow';
 
 import 'reactflow/dist/style.css';
-import { CustomNode_memo } from './custom-node';
+import { CustomNode } from './other/custom-node';
 
 
 const nodeTypes = {
-  custom: CustomNode_memo
+  custom: CustomNode
 }
 
 const initialNodes = [{ 

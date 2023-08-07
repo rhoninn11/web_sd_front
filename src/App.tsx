@@ -7,7 +7,7 @@ import { CoreExample } from './components/core-example/core-example';
 import { SelectExample } from './components/select-example/select-example';
 import { DatetimeExample } from './components/datetime-example/datetime-example';
 import { PopoverExample } from './components/popover-example/popover-example';
-import { Flow } from './components/org/other/flow';
+import { Flow } from './components/my/flow';
 import classNames from 'classnames';
 import { TestingComponent } from './tmp/index';
 
@@ -16,14 +16,14 @@ FocusStyleManager.onlyShowFocusOnTabs();
 function App() {
     return (
         <div className={classNames(styles.App, Classes.DARK)}>
-            <NavigationBar />
+            {/* <NavigationBar />
             <CoreExample />
             <SelectExample />
             <DatetimeExample />
             <PopoverExample />
-            <TestingComponent />
+            <TestingComponent /> */}
             {/* add inline width and height to div*/}
-            <div style={{"width": "500px", "height": "500px"}}>
+            <div style={{"width": "2000px", "height": "900px"}}>
                 <Flow />
             </div>
         </div>

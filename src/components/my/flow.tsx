@@ -7,6 +7,7 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   addEdge,
+  useReactFlow,
 } from 'reactflow';
 
 import 'reactflow/dist/style.css';
@@ -17,20 +18,25 @@ const nodeTypes = {
   custom: CustomNode
 }
 
+interface CustomNodeData{
+  label: string;
+  onCreate: () => void;
+}
+
 const initialNodes = [{ 
   id: '1', 
   position: { x: 0, y: 0 }, 
-  data: { label: '1' },
+  data: { label: '1',onCreate: () => console.log('1') },
   type: 'input',
 },{ 
   id: '2', 
   position: { x: 0, y: 100 }, 
-  data: { label: '2' },
+  data: { label: '2', onCreate: () => console.log('1')},
   type: 'input',
 },{
   id: '3', 
   position: { x: 0, y: 200 }, 
-  data: { label: '3' },
+  data: { label: '3', onCreate: () => console.log('onCreate')},
   type: 'custom',
 }
 ];
@@ -39,6 +45,7 @@ const initialNodes = [{
 const initialEdges = [{ id: 'e1-2', source: '1', target: '2' }];
 
 export const Flow = () => {
+  // const {  } = useReactFlow();
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 

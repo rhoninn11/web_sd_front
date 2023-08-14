@@ -9,7 +9,7 @@ import { DatetimeExample } from './components/datetime-example/datetime-example'
 import { PopoverExample } from './components/popover-example/popover-example';
 import { Flow } from './components/my/flow_alt';
 import classNames from 'classnames';
-import { ServerPlug } from './components/store/ServerPlug';
+import { ServerPlug } from './components/server/ServerPlug';
 
 FocusStyleManager.onlyShowFocusOnTabs();
 

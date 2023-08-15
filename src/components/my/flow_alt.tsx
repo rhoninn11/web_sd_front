@@ -13,15 +13,17 @@ import 'reactflow/dist/style.css';
 
 import styles from './s.module.scss';
 import { CustomNode } from './other/custom-node';
+import { PromptNode } from './other/prompt_node/prompt_node';
 
 const nodeTypes = {
-	custom: CustomNode
+	custom: CustomNode,
+	prompt: PromptNode,
   }
 
 const initialNodes = [
 	{
 		id: '0',
-		type: 'input',
+		type: 'prompt',
 		data: { label: 'Node' },
 		position: { x: 0, y: 50 },
 	},

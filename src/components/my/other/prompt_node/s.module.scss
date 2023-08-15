@@ -1,0 +1,19 @@
+
+.smaller_img {
+    width: 150px;
+    height: 150px;
+    border-radius: 25%;
+    border: 1px solid #ccc;
+    margin: 0 auto;
+    display: block;
+    margin-bottom: 10px;
+}
+
+// with dark translucent background
+.nice_box {
+    border: 1px solid #ccc;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 10px;
+    background-color: rgba(39, 38, 50, 0.5);
+}

@@ -1,10 +1,11 @@
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 import { Handle, NodeProps, Position } from 'reactflow';
 import styles from './s.module.scss';
-import { Button, Menu, MenuDivider, MenuItem, Popover, Spinner } from '@blueprintjs/core';
+import { Button, Menu, MenuDivider, MenuItem, Popover, ProgressBar, Spinner } from '@blueprintjs/core';
 import { useServerContext } from '../../../server/SocketProvider';
 import { ClientServerBridge } from '../../../../logic/ClientServerBridge';
 
+import { img64 } from '../../../../types/types_serv_comm';
 
 interface CustomNodeData {
 	label: string;
@@ -14,29 +15,44 @@ interface CustomNodeData {
 const _PromptNode = ({ data }: NodeProps<CustomNodeData>) => {
 	// const {txt2imgHandle, txt2imgResultHandle, setTxt2imgResultHandle} = useServerContext();
 	const {isAuthenticated} = useServerContext();
-    const [disable, setDisable] = React.useState(false);
+    const [generating, setGenerating] = React.useState(false);
+	const [img64data, setImg64data] = useState('');
+	const [progress, setProgress] = useState(0.0);
 
     let click = () => {
         console.log('click');
 		
-        setDisable(true);
+        setGenerating(true);
 		
-		let onFinished = (data: any) => {
-			setDisable(false);
-			console.log('from node');
+		let onProgress = (progress: number) => {
+			console.log('progress: ' + progress);
+			setProgress(progress);
+		}
+
+		let onFinished = (data: img64) => {
+
+			setGenerating(false);
+			setProgress(0.0);
+			let prefix = `data:image/${data.mode};base64,`
+			setImg64data(prefix + data.img64);
 			console.log(data);
 		}
 
 		let bridge = ClientServerBridge.getInstance();
 		bridge.send_txt2_img()
 		bridge.onText2imgResult.push(onFinished);
-
-
+		bridge.onText2imgProgress.push(onProgress);
     }
+
+	let progress_bar = generating ? <ProgressBar value={progress} /> : null;
+	let test_img = img64data.length > 0 ? <img src={img64data} /> : null;
+	console.log("length: " + img64data.length)
 
 	let display_content = <div>
 			<div> {isAuthenticated ? "authenticated" : "not authenticcated"}</div>
-            <Button onClick={click} disabled={disable} icon="refresh"/>
+            <Button onClick={click} disabled={generating} icon="refresh"/>
+			{test_img}
+			{progress_bar}
         </div>
 
 	return (

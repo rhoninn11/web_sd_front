@@ -8,12 +8,21 @@ export interface serverRequest {
 	data: string;
 }
 
-export interface metadata {
-    id: string;
+
+
+export interface img64{
+    img64: string;
+    mode: string;
+    x: number;
+    y: number;
 }
 
-export interface bulk {
-	img: string;
+export interface bulk_data{
+    img: img64;
+}
+
+export interface metadata {
+    id: string;
 }
 
 export interface txt2img_config {
@@ -24,11 +33,21 @@ export interface txt2img_config {
 }
 
 export interface txt2img_content {
-    metadata: metadata;
     config: txt2img_config
-	bulk: bulk;
+    metadata: metadata;
+    bulk: bulk_data;
+
 }
 
 export interface txt2img {
     txt2img: txt2img_content;
+}
+
+export interface progress {
+    progress: progress_content;
+}
+
+export interface progress_content {
+    metadata: metadata;
+    value: number;
 }

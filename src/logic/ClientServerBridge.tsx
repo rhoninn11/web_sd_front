@@ -5,7 +5,7 @@
 
 
 import { w3cwebsocket as W3CWebSocket } from 'websocket';
-import { serverRequest, authData, txt2img } from '../types/types_serv_comm';
+import { serverRequest, authData, txt2img, progress } from '../types/types_serv_comm';
 
 const serverPort = 8700;
 
@@ -84,15 +84,23 @@ export class ClientServerBridge {
 		// txt2imgResultHandle(txt2imgData)
 		if (this.onText2imgResult.length > 0){
 			// get first
+			let onProgress = this.onText2imgProgress.shift();
 			let onFinished = this.onText2imgResult.shift();
 			if (onFinished){
-				onFinished(txt2imgData);
+				onFinished(txt2imgData.txt2img.bulk.img);
 			}
 		}
 	}
 
 	private _handleProgress(data: string){
-		console.log(data);
+		let progress: progress = JSON.parse(data);
+		let prog_fn_num = this.onText2imgProgress.length;
+		if(prog_fn_num > 0){
+			console.log(progress);
+			console.log('progress'+ progress);
+			let onProgress = this.onText2imgProgress[0];
+			onProgress(progress.progress.value);
+		}
 	}
 
 // to communicate with react
@@ -109,6 +117,7 @@ export class ClientServerBridge {
    
 // public methods
 	public onText2imgResult: ((data:any)=> void)[] = []
+	public onText2imgProgress: ((data:any)=> void)[] = []
     public send_txt2_img(){
 		if (!this.client) {
 			return;
@@ -117,7 +126,12 @@ export class ClientServerBridge {
 		let txt2img_entry: txt2img = {
 			txt2img: {
 				metadata: { id: ''},
-				bulk: { img: ''},
+				bulk: { img: {
+					img64: '',
+					mode: '',
+					x: 0,
+					y: 0
+				}},
 				config: {
 					prompt: 'romantic evening in samll itally town, pastel painting',
 					prompt_negative: 'borign sky',

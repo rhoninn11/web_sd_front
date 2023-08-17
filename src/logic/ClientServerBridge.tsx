@@ -5,13 +5,14 @@
 
 
 import { w3cwebsocket as W3CWebSocket } from 'websocket';
-import { serverRequest, authData, txt2img, progress } from '../types/types_serv_comm';
+import { serverRequest, authData, txt2img, progress, txt2img_config, default_txt2img_config } from '../types/types_serv_comm';
 
 const serverPort = 8700;
 
 export class ClientServerBridge {
     private static instance: ClientServerBridge;
     private client: W3CWebSocket | null = null;
+
 
     private _init (){
         this.client = new W3CWebSocket(`ws://localhost:${serverPort}`);
@@ -118,7 +119,7 @@ export class ClientServerBridge {
 // public methods
 	public onText2imgResult: ((data:any)=> void)[] = []
 	public onText2imgProgress: ((data:any)=> void)[] = []
-    public send_txt2_img(){
+    public send_txt2_img(cfg: txt2img_config){
 		if (!this.client) {
 			return;
 		}
@@ -132,12 +133,7 @@ export class ClientServerBridge {
 					x: 0,
 					y: 0
 				}},
-				config: {
-					prompt: 'romantic evening in samll itally town, pastel painting',
-					prompt_negative: 'borign sky',
-					seed: 1,
-					samples: 1
-				},
+				config: cfg
 			}
 		};
 

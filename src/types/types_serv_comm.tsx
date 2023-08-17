@@ -32,6 +32,13 @@ export interface txt2img_config {
     samples: number;
 }
 
+export const default_txt2img_config: txt2img_config = {
+    prompt: "romantic evening in small itally town, pastel painting",
+    prompt_negative: "borign sky",
+    seed: 0,
+    samples: 1
+}
+
 export interface txt2img_content {
     config: txt2img_config
     metadata: metadata;

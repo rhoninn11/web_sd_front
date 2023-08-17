@@ -1,69 +1,118 @@
-
-import { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import ReactFlow, {
-  MiniMap,
-  Controls,
-  Background,
-  useNodesState,
-  useEdgesState,
-  addEdge,
-  useReactFlow,
+	useNodesState,
+	useEdgesState,
+	addEdge,
+	useReactFlow,
+	ReactFlowProvider,
+	MiniMap,
+	Controls,
+	Background,
 } from 'reactflow';
-
 import 'reactflow/dist/style.css';
-import { CustomNode } from './other/custom-node';
 
+import styles from './s.module.scss';
+import { CustomNode } from './other/custom-node';
+import { PromptNode } from './other/prompt_node/prompt_node';
 
 const nodeTypes = {
-  custom: CustomNode
-}
+	custom: CustomNode,
+	prompt: PromptNode,
+  }
 
-interface CustomNodeData{
-  label: string;
-  onCreate: () => void;
-}
-
-const initialNodes = [{ 
-  id: '1', 
-  position: { x: 0, y: 0 }, 
-  data: { label: '1',onCreate: () => console.log('1') },
-  type: 'input',
-},{ 
-  id: '2', 
-  position: { x: 0, y: 100 }, 
-  data: { label: '2', onCreate: () => console.log('1')},
-  type: 'input',
-},{
-  id: '3', 
-  position: { x: 0, y: 200 }, 
-  data: { label: '3', onCreate: () => console.log('onCreate')},
-  type: 'custom',
-}
+const initialNodes = [
+	{
+		id: '0',
+		type: 'prompt',
+		data: { label: 'Node' },
+		position: { x: 0, y: 50 },
+	},
 ];
 
+let id = 1;
+const getId = () => `${id++}`;
 
-const initialEdges = [{ id: 'e1-2', source: '1', target: '2' }];
+const fitViewOptions = {
+	padding: 3,
+};
 
-export const Flow = () => {
-  // const {  } = useReactFlow();
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-
-  const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
-  console.log('Flow');
-  return (
-    <ReactFlow
-      nodes={nodes}
-      edges={edges}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-      onConnect={onConnect}
-      nodeTypes={nodeTypes}
-    >
-      <MiniMap />
-      <Controls />
-      <Background />
-    </ReactFlow>
-  );
+interface IdTracker {
+	id: string;
 }
 
+const AddNodeOnEdgeDrop = () => {
+	const reactFlowWrapper = useRef<HTMLDivElement>(null);
+	const connectingNodeId = useRef<IdTracker>({ id: '' });
+	const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+	const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+	const { project } = useReactFlow();
+	const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), []);
+
+	const onConnectStart = useCallback((_, { nodeId }) => {
+		console.log(_)
+		connectingNodeId.current.id = nodeId;
+	}, []);
+
+	const onConnectEnd = useCallback(
+		(event) => {
+			const targetIsPane = event.target.classList.contains('react-flow__pane');
+
+			if (targetIsPane) {
+				// we need to remove the wrapper bounds, in order to get the correct position
+				if (reactFlowWrapper && reactFlowWrapper.current) {
+					console.log(`reactFlowWrapper.current.getBoundingClientRect()`, reactFlowWrapper.current.getBoundingClientRect())
+					const { top, left } = reactFlowWrapper.current.getBoundingClientRect();
+					const id = getId();
+					const newNode = {
+						id,
+						type: 'prompt',
+						// we are removing the half of the node width (75) to center the new node
+						position: project({ x: event.clientX - left - 75, y: event.clientY - top }),
+						// return random value from 0 to 100
+						data: { 
+							label: `Node ${id}`
+						},
+					};
+					const new_edge = { id, 
+						source: connectingNodeId.current.id,
+						target: id 
+					};
+
+
+					setNodes((nds) => nds.concat(newNode));
+
+					setEdges((eds) => eds.concat(new_edge));
+				}
+			}
+		},
+		[project]
+	);
+
+	return (
+		<div className={styles.wrapper} ref={reactFlowWrapper}>
+			<MiniMap />
+			<Controls />
+			<Background />
+			<ReactFlow
+				nodes={nodes}
+				edges={edges}
+				onNodesChange={onNodesChange}
+				onEdgesChange={onEdgesChange}
+				onConnect={onConnect}
+				onConnectStart={onConnectStart}
+				onConnectEnd={onConnectEnd}
+				fitView
+				fitViewOptions={fitViewOptions}
+				nodeTypes={nodeTypes}
+			/>
+			
+	</div>
+	);
+};
+
+export const Flow = () => {
+	return (
+		<ReactFlowProvider>
+			<AddNodeOnEdgeDrop />
+		</ReactFlowProvider>
+)};

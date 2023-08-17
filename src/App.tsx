@@ -7,7 +7,7 @@ import { CoreExample } from './components/core-example/core-example';
 import { SelectExample } from './components/select-example/select-example';
 import { DatetimeExample } from './components/datetime-example/datetime-example';
 import { PopoverExample } from './components/popover-example/popover-example';
-import { Flow } from './components/my/flow_alt';
+import { Flow } from './components/my/flow';
 import classNames from 'classnames';
 import { ServerContextProvider} from './components/server/SocketProvider';
 import { UsingServerPlug} from './components/server/UsingServerPlug';

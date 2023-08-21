@@ -8,12 +8,16 @@ import { PromptOverlay } from '../../../overlayes/delete-overlay/prompt_overlay'
 
 import { img64, txt2img_config, default_txt2img_config } from '../../../../types/types_serv_comm';
 
-interface CustomNodeData {
+interface PropmtData {
+	pipe_prompt_data: (t2i_cfg: txt2img_config) => void;
+	pipe_img_data: (img_coded: string) => void;
+}
+interface PromptNodeData {
 	label: string;
-	roll: number;
+	prompt_data: PropmtData;
 }
 
-const _PromptNode = ({ data }: NodeProps<CustomNodeData>) => {
+const _PromptNode = ({ data }: NodeProps<PromptNodeData>) => {
 	// const {txt2imgHandle, txt2imgResultHandle, setTxt2imgResultHandle} = useServerContext();
 	const {isAuthenticated} = useServerContext();
 
@@ -25,8 +29,12 @@ const _PromptNode = ({ data }: NodeProps<CustomNodeData>) => {
 	const [img64data, setImg64data] = useState('');
 	const [progress, setProgress] = useState(0.0);
 
+	const {pipe_img_data, pipe_prompt_data} = data.prompt_data;
+
     let startGeneration = (t2i_cfg:txt2img_config ) => {
 		setTxt2img_config(t2i_cfg);
+		pipe_prompt_data(t2i_cfg);
+
         setGenerating(true);
 		
 		let onProgress = (progress: number) => {
@@ -35,7 +43,10 @@ const _PromptNode = ({ data }: NodeProps<CustomNodeData>) => {
 
 		let onFinished = (data: img64) => {
 			let prefix = `data:image/${data.mode};base64,`
-			setImg64data(prefix + data.img64);
+			let img_coded = prefix + data.img64;
+			setImg64data(img_coded);
+			pipe_img_data(img_coded)
+
 			setGenerating(false);
 			setGenerated(true);
 			setProgress(0.0);

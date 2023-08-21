@@ -14,6 +14,7 @@ import 'reactflow/dist/style.css';
 import styles from './s.module.scss';
 import { CustomNode } from './other/custom-node';
 import { PromptNode } from './other/prompt_node/prompt_node';
+import { txt2img_config } from '../../types/types_serv_comm';
 
 const nodeTypes = {
 	custom: CustomNode,
@@ -24,7 +25,10 @@ const initialNodes = [
 	{
 		id: '0',
 		type: 'prompt',
-		data: { label: 'Node' },
+		data: { label: 'Node', prompt_data: {
+			pipe_prompt_data: (t2i_cfg: txt2img_config) => console.log('pipe_prompt_data'),
+			pipe_img_data: (img_coded: string) => console.log('pipe_img_data'),
+		}},
 		position: { x: 0, y: 50 },
 	},
 ];
@@ -48,8 +52,16 @@ const AddNodeOnEdgeDrop = () => {
 	const { project } = useReactFlow();
 	const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), []);
 
-	const onConnectStart = useCallback((_, { nodeId }) => {
-		console.log(_)
+
+	const Elo = (id: string) => {
+		let this_node = nodes.find((node) =>  node.id === id)
+		if (this_node){
+			let elo = this_node.data.prompt_data
+		
+	}
+
+	const onConnectStart = useCallback((eventInfo, nodeInfo) => {
+		let nodeId = nodeInfo?.nodeId
 		connectingNodeId.current.id = nodeId;
 	}, []);
 
@@ -65,12 +77,13 @@ const AddNodeOnEdgeDrop = () => {
 					const id = getId();
 					const newNode = {
 						id,
-						type: 'prompt',
+						type: 'custom',
 						// we are removing the half of the node width (75) to center the new node
 						position: project({ x: event.clientX - left - 75, y: event.clientY - top }),
 						// return random value from 0 to 100
 						data: { 
-							label: `Node ${id}`
+							label: `Node ${id}`,
+							roll: Math.floor(Math.random() * 100),
 						},
 					};
 					const new_edge = { id, 

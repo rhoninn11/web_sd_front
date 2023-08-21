@@ -1,27 +1,27 @@
-import React, { memo, useState } from 'react';
+import React, { memo, useEffect, useState } from 'react';
 import { Handle, NodeProps, Position } from 'reactflow';
 import styles from './s.module.scss';
 import { Button, Classes, Intent, Menu, MenuDivider, MenuItem, Popover, ProgressBar, Spinner } from '@blueprintjs/core';
 import { useServerContext } from '../../../server/SocketProvider';
 import { ClientServerBridge } from '../../../../logic/ClientServerBridge';
 import { PromptOverlay } from '../../../overlayes/delete-overlay/prompt_overlay';
+import { cloneDeep } from 'lodash';
 
-import { img64, txt2img_config, default_txt2img_config } from '../../../../types/types_serv_comm';
+import { img64, txt2img_config, GenData } from '../../../../types/types_serv_comm';
+import { DBNode } from '../../../../types/types_db';
+import { editDBFilm, getDBNode } from '../../../../logic/db';
 
-interface PropmtData {
-	pipe_prompt_data: (t2i_cfg: txt2img_config) => void;
-	pipe_img_data: (img_coded: string) => void;
-}
 interface PromptNodeData {
+	db_id: number;
 	label: string;
-	prompt_data: PropmtData;
+	higher_level_data: GenData;
 }
 
 const _PromptNode = ({ data }: NodeProps<PromptNodeData>) => {
-	// const {txt2imgHandle, txt2imgResultHandle, setTxt2imgResultHandle} = useServerContext();
 	const {isAuthenticated} = useServerContext();
 
-	const [txt2img_config, setTxt2img_config] = useState(default_txt2img_config);
+	const hl_data = data.higher_level_data;
+	const [txt2img_config, setTxt2img_config] = useState(cloneDeep(hl_data.propmt_cfg));
 
 	const [generated, setGenerated] = React.useState(false);
     const [generating, setGenerating] = React.useState(false);
@@ -29,11 +29,27 @@ const _PromptNode = ({ data }: NodeProps<PromptNodeData>) => {
 	const [img64data, setImg64data] = useState('');
 	const [progress, setProgress] = useState(0.0);
 
-	const {pipe_img_data, pipe_prompt_data} = data.prompt_data;
+	const set_hl_prompt = (t2i_cfg:txt2img_config ) => {
+		console.log('set_hl_prompt')
+		hl_data.propmt_cfg = t2i_cfg;
+	}
+	const set_hl_img = (img_coded: string) => {
+		console.log('set_hl_img')
+		hl_data.img_coded = img_coded;
+	}
+
+	const db_img = async (coded_img64: string) => {
+		let db_node = await getDBNode(data.db_id)
+		if(db_node){
+			db_node.img = coded_img64;
+			await editDBFilm(data.db_id, db_node)
+			console.log('db_img')
+		}
+	}
 
     let startGeneration = (t2i_cfg:txt2img_config ) => {
 		setTxt2img_config(t2i_cfg);
-		pipe_prompt_data(t2i_cfg);
+		set_hl_prompt(t2i_cfg);
 
         setGenerating(true);
 		
@@ -41,11 +57,10 @@ const _PromptNode = ({ data }: NodeProps<PromptNodeData>) => {
 			setProgress(progress);
 		}
 
-		let onFinished = (data: img64) => {
-			let prefix = `data:image/${data.mode};base64,`
-			let img_coded = prefix + data.img64;
-			setImg64data(img_coded);
-			pipe_img_data(img_coded)
+		let onFinished = (coded_img64: string) => {
+			setImg64data(coded_img64);
+			set_hl_img(coded_img64)
+			db_img(coded_img64);
 
 			setGenerating(false);
 			setGenerated(true);
@@ -59,12 +74,26 @@ const _PromptNode = ({ data }: NodeProps<PromptNodeData>) => {
 		bridge.onText2imgProgress.push(onProgress);
     }
 
-    let click_2 = () => {
+    let ShowPromptOverlay = () => {
 		setShowOverlay(true);
     }
 
+
+	useEffect(() => {
+		const fetchData = async () => {
+			let db_node = await getDBNode(data.db_id)
+			if(db_node && db_node.img.length > 0){
+				setGenerated(true);
+				setImg64data(db_node.img);
+				set_hl_img(db_node.img)
+			}
+		};
+
+		fetchData();
+	}, []);
+
 	let oberlay_btn = !generated ?
-		<Button onClick={click_2} disabled={generating} rightIcon="edit" intent={Intent.PRIMARY}>
+		<Button onClick={ShowPromptOverlay} disabled={generating} rightIcon="edit" intent={Intent.PRIMARY}>
 			Describe
 		</Button>
 		:null
@@ -73,7 +102,8 @@ const _PromptNode = ({ data }: NodeProps<PromptNodeData>) => {
 		<PromptOverlay 
 			onClose={() => setShowOverlay(false)}
 			onGenerate={startGeneration}
-			title={'Txt2img options'} /> 
+			title={'Txt2img options'} 
+			init_cfg={txt2img_config}/> 
 		: null;
 
 	let progress_bar = generating ?

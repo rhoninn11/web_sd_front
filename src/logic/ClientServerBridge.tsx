@@ -77,18 +77,22 @@ export class ClientServerBridge {
 		this._setIsAuthenticated(authData.auth);
 	}
 
-	private _handleTxt2img (data: string){
+	private async _handleTxt2img (data: string){
 		let txt2imgData: txt2img = JSON.parse(data);
-		console.log('from bridge');
-		console.log(txt2imgData);
-		//TODO: handle txt2img
-		// txt2imgResultHandle(txt2imgData)
+		// console.log('from bridge');
+		// console.log(txt2imgData);
 		if (this.onText2imgResult.length > 0){
-			// get first
 			let onProgress = this.onText2imgProgress.shift();
 			let onFinished = this.onText2imgResult.shift();
+
 			if (onFinished){
-				onFinished(txt2imgData.txt2img.bulk.img);
+				let img = txt2imgData.txt2img.bulk.img
+				let prefix = `data:image/${img.mode};base64,`
+				let coded_img = prefix + img.img64;
+
+				onFinished(coded_img);
+
+				// save to db
 			}
 		}
 	}
@@ -97,8 +101,8 @@ export class ClientServerBridge {
 		let progress: progress = JSON.parse(data);
 		let prog_fn_num = this.onText2imgProgress.length;
 		if(prog_fn_num > 0){
-			console.log(progress);
-			console.log('progress'+ progress);
+			// console.log(progress);
+			// console.log('progress'+ progress);
 			let onProgress = this.onText2imgProgress[0];
 			onProgress(progress.progress.value);
 		}

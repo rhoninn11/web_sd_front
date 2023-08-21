@@ -58,3 +58,13 @@ export interface progress_content {
     metadata: metadata;
     value: number;
 }
+
+export interface GenData {
+	propmt_cfg: txt2img_config
+	img_coded: string
+}
+
+export const default_GenData: GenData = {
+    propmt_cfg: default_txt2img_config,
+    img_coded: ''
+}

@@ -1,54 +1,50 @@
+// general
+export interface serverRequest {
+    type: string;
+    data: string;
+}
+
+//auth
 export interface authData {
 	password: string;
 	auth: boolean;
 }
 
-export interface serverRequest {
-	type: string;
-	data: string;
+//txt2img
+export class txt2img {
+    txt2img: txt2img_content = new txt2img_content();
 }
 
-
-
-export interface img64{
-    img64: string;
-    mode: string;
-    x: number;
-    y: number;
-}
-
-export interface bulk_data{
-    img: img64;
-}
-
-export interface metadata {
-    id: string;
-}
-
-export interface txt2img_config {
-    prompt: string;
-    prompt_negative: string;
-    seed: number;
-    samples: number;
-}
-
-export const default_txt2img_config: txt2img_config = {
-    prompt: "romantic evening in small itally town, pastel painting",
-    prompt_negative: "borign sky",
-    seed: 0,
-    samples: 1
-}
-
-export interface txt2img_content {
-    config: txt2img_config
-    metadata: metadata;
-    bulk: bulk_data;
+export class txt2img_content {
+    config: txt2img_config = new txt2img_config();
+    metadata: metadata = new metadata();
+    bulk: bulk_data = new bulk_data();
 
 }
 
-export interface txt2img {
-    txt2img: txt2img_content;
+export class txt2img_config {
+    prompt: string = '';
+    prompt_negative: string = '';
+    seed: number = 0;
+    samples: number = 1;
 }
+
+
+export class metadata {
+    id: string = '';
+}
+
+export class bulk_data{
+    img: img64 = new img64();
+}
+
+export class img64{
+    img64: string = '';
+    mode: string = '';
+    x: number = 0;
+    y: number = 0;
+}
+
 
 export interface progress {
     progress: progress_content;
@@ -59,12 +55,7 @@ export interface progress_content {
     value: number;
 }
 
-export interface GenData {
-	propmt_cfg: txt2img_config
-	img_coded: string
-}
-
-export const default_GenData: GenData = {
-    propmt_cfg: default_txt2img_config,
-    img_coded: ''
+export class GenData {
+	propmt_cfg: txt2img_config = new txt2img_config();
+	img_coded: string = '';
 }

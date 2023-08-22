@@ -81,7 +81,6 @@ export let editDBFilm = async (id: number, updated_value: DBNode) => {
     }
 }
 
-
 export let addDBEdge = async (new_edge: Edge) => {
     const db = await getDB();
     const tx = db.transaction(EDGE_FIELD, 'readwrite');

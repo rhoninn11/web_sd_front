@@ -5,11 +5,14 @@
 
 
 import { w3cwebsocket as W3CWebSocket } from 'websocket';
-import { serverRequest, authData, txt2img, progress, txt2img_config, default_txt2img_config } from '../types/types_serv_comm';
+import { serverRequest, authData, txt2img, progress, txt2img_config, img64 } from '../types/types_serv_comm';
+import { ProcessorRepository } from './RequestProcessor';
+import { FlowEdge, FlowNode } from '../types/types_flow';
 
 const serverPort = 8700;
 
 export class ClientServerBridge {
+
     private static instance: ClientServerBridge;
     private client: W3CWebSocket | null = null;
 
@@ -70,6 +73,12 @@ export class ClientServerBridge {
 		if (req.type === 'progress') {
 			this._handleProgress(req.data)
 		}
+
+		let proc_repo = ProcessorRepository.getInstance()
+		let proc = proc_repo.get_processor(req.type)
+		if (proc) {
+			proc.from_server(req);
+		}
 	}
 
 	private _handleAuth (data: string) {
@@ -123,6 +132,7 @@ export class ClientServerBridge {
 // public methods
 	public onText2imgResult: ((data:any)=> void)[] = []
 	public onText2imgProgress: ((data:any)=> void)[] = []
+
     public send_txt2_img(cfg: txt2img_config){
 		if (!this.client) {
 			return;
@@ -131,12 +141,7 @@ export class ClientServerBridge {
 		let txt2img_entry: txt2img = {
 			txt2img: {
 				metadata: { id: ''},
-				bulk: { img: {
-					img64: '',
-					mode: '',
-					x: 0,
-					y: 0
-				}},
+				bulk: { img: new img64() },
 				config: cfg
 			}
 		};
@@ -151,6 +156,15 @@ export class ClientServerBridge {
 		console.log(this.client);
 		this.client.send(json_string);
 	}
+
+	public send_node(flow_node: FlowNode) {
+		console.log('send_node not implemented');
+	}
+
+	public send_edge(flow_edge: FlowEdge) {
+		console.log('send_edge not implemented');
+	}
+
 
 }
 

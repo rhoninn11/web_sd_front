@@ -14,12 +14,14 @@ import 'reactflow/dist/style.css';
 import styles from './s.module.scss';
 import { CustomNode } from './other/custom-node';
 import { PromptNode } from './other/prompt_node/prompt_node';
-import { txt2img_config, default_GenData, GenData } from '../../types/types_serv_comm';
+import { GenData } from '../../types/types_serv_comm';
 import { cloneDeep } from 'lodash';
 
 import { addDBNode, addDBEdge, getAllDBEdges, getAllDBNodes } from '../../logic/db';
 import { edge_db2flow, edge_flow2db, node_db2flow, node_flow2db} from '../../logic/convert_utils';
 import { DBNode } from '../../types/types_db';
+import { ClientServerBridge } from '../../logic/ClientServerBridge';
+import { FlowEdge, FlowNode } from '../../types/types_flow';
 
 const nodeTypes = {
 	custom: CustomNode,
@@ -37,7 +39,7 @@ interface NodeTracker {
 
 const AddNodeOnEdgeDrop = () => {
 	const reactFlowWrapper = useRef<HTMLDivElement>(null);
-	const nodeConnectSource = useRef<NodeTracker>({ id: '', gen_data: cloneDeep(default_GenData) });
+	const nodeConnectSource = useRef<NodeTracker>({ id: '', gen_data: new GenData()});
 	// const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
 	const [nodes, setNodes, onNodesChange] = useNodesState([]);
 	const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -69,25 +71,29 @@ const AddNodeOnEdgeDrop = () => {
 	const create_new_node = async (event: any, div: HTMLDivElement, sourceNodeData: NodeTracker) => {
 		const { top, left } = div.getBoundingClientRect();
 
+		// create new node
+		// create new edge
+		// add to db
+		// send to server
+
 		let hl_data = cloneDeep(sourceNodeData.gen_data);
 		console.log('hl_data', hl_data)
 
 		let node_db_id = nodeNum;
-		let flow_node = {
+		let flow_node: FlowNode = {
 			id: node_db_id.toString(),
 			type: 'prompt',
 			position: project({ x: event.clientX - left - 75, y: event.clientY - top }),
 			data: {
 				label: 'Node',
 				db_id: node_db_id,
-				higher_level_data: cloneDeep(hl_data)
+				higher_level_data: hl_data
 			},
-
 		};
 		let db_node = node_flow2db(node_db_id, flow_node)
 
 		const flow_db_id = edgeNum;
-		let flow_edge = {
+		let flow_edge: FlowEdge = {
 			id: flow_db_id.toString(),
 			source: nodeConnectSource.current.id,
 			target: node_db_id.toString()
@@ -100,6 +106,11 @@ const AddNodeOnEdgeDrop = () => {
 		setNodeNum(nodeNum + 1);
 		await addDBNode(db_node);
 		await addDBEdge(db_edge);
+
+		let bridge = ClientServerBridge.getInstance();
+		bridge.send_node(flow_node);
+		bridge.send_edge(flow_edge);
+		// i jeszcze do serwera
 	}
 
 	const place_node = (event: any) => {

@@ -1,3 +1,4 @@
+import { NodePosition } from "./types_common";
 import { txt2img_config } from "./types_serv_comm";
 
 
@@ -9,10 +10,6 @@ export interface Generation {
     b64_img: string;
 }
 
-export interface NodePosition {
-    x: number;
-    y: number;
-}
 
 export interface DBNode {
     db_id: number;

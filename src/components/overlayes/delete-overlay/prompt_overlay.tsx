@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import styles from "./s.module.scss"
 import { textAreaEditor } from "../../../logic/editor-helper";
-import { txt2img_config, default_txt2img_config } from "../../../types/types_serv_comm";
+import { txt2img_config } from "../../../types/types_serv_comm";
 
 interface RecipeOverlayProps {
     className?: string;
@@ -13,7 +13,7 @@ interface RecipeOverlayProps {
     title: string;
     onClose?: () => void;
     onGenerate?: (t2i_cfg: txt2img_config) => void;
-    init_cfg?: txt2img_config;
+    init_cfg: txt2img_config;
 }
 
 export const PromptOverlay = ({
@@ -25,7 +25,7 @@ export const PromptOverlay = ({
     init_cfg,
 }: RecipeOverlayProps ) => {
     
-    let base_cfg = init_cfg ? init_cfg : default_txt2img_config;
+    let base_cfg = init_cfg;
     const [visible, setVisible] = useState(true);
     const [prompt, setPrompt] = useState<string>(base_cfg.prompt)
     const [negPrompt, setNegPrompt] = useState<string>(base_cfg.prompt_negative)

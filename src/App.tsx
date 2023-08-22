@@ -10,8 +10,6 @@ import { PopoverExample } from './components/popover-example/popover-example';
 import { Flow } from './components/my/flow';
 import classNames from 'classnames';
 import { ServerContextProvider} from './components/server/SocketProvider';
-import { UsingServerPlug} from './components/server/UsingServerPlug';
-import { Txt2imgPrompt } from './components/server/txt2imgPrompt';
 
 
 FocusStyleManager.onlyShowFocusOnTabs();
@@ -28,8 +26,6 @@ function App() {
             {/* add inline width and height to div*/}
             <ServerContextProvider>
                 {/* <div className={styles.frow}>
-                    <UsingServerPlug />
-                    <Txt2imgPrompt />
                 </div> */}
                 <div style={{"width": "2000px", "height": "900px"}}>
                     <Flow />

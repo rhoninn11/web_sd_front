@@ -48,6 +48,13 @@ export let getDB = async () => {
     return await openDB<Wb_Sd_Db>('web_sd_db', 1)
 }
 
+const _get_store = async (store_name: any) => {
+    const db = await getDB();
+    const tx = db.transaction(store_name, 'readwrite');
+    const store = tx.objectStore(store_name);
+    return store;
+}
+
 export let getAllDBNodes = async () => {
     const db = await initDB();
     const all_nodes: DBNode[] = await db.getAll(NODE_FIELD);
@@ -55,37 +62,30 @@ export let getAllDBNodes = async () => {
 }
 
 export let addDBNode = async (new_node: DBNode) => {
-    const db = await getDB();
-    const tx = db.transaction(NODE_FIELD, 'readwrite');
-    const store = tx.objectStore(NODE_FIELD);
-    await store.add(new_node);
+    let job = _get_store(NODE_FIELD)
+        .then((store) => store.add(new_node))
+    return await job
 }
 
 export let getDBNode = async (id: number) => {
-    // console.log(' ++DB++ getDBNode', id)
-    const db = await getDB();
-    const tx = db.transaction(NODE_FIELD, 'readwrite');
-    const store = tx.objectStore(NODE_FIELD);
-    const node = await store.get(id);
-    return node;
+    let job = _get_store(NODE_FIELD)
+        .then((store) => store.get(id))
+
+    return await job;
 }
 
-export let editDBFilm = async (id: number, updated_value: DBNode) => {
-    // console.log(' ++DB++ editDBFilm', id)
-    const db = await getDB();
-    const tx = db.transaction(NODE_FIELD, 'readwrite');
-    const store = tx.objectStore(NODE_FIELD);
-    const node = await store.get(id);
+export let editDBNode = async (id: number, updated_value: DBNode) => {
+    let store = await _get_store(NODE_FIELD)
+    let node = await store.get(id)
     if (node) {
         await store.put(updated_value);
     }
 }
 
 export let addDBEdge = async (new_edge: Edge) => {
-    const db = await getDB();
-    const tx = db.transaction(EDGE_FIELD, 'readwrite');
-    const store = tx.objectStore(EDGE_FIELD);
-    await store.add(new_edge);
+    let job = _get_store(EDGE_FIELD)
+        .then((store) => store.add(new_edge))
+    return await job
 }
 
 

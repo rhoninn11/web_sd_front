@@ -1,4 +1,4 @@
-import { cloneDeep } from "lodash";
+import { cloneDeep, flow } from "lodash";
 import { DBNode } from "../types/types_db";
 import { FlowNode } from "../types/types_flow";
 
@@ -19,13 +19,13 @@ export const node_db2flow = (db_node: DBNode): FlowNode => {
     return flow_node;
 }
 
-export const node_flow2db = (db_id: number, flow_node: FlowNode):DBNode => {
+export const node_flow2db = (flow_node: FlowNode):DBNode => {
     let db_node = {
-        db_id: db_id,
+        db_id: flow_node.data.db_id,
         id: flow_node.id,
         type: flow_node.type,
         position: flow_node.position,
-        img: '',
+        img: flow_node.data.higher_level_data.img_coded,
         prompt: cloneDeep(flow_node.data.higher_level_data.propmt_cfg),
     }
     return db_node;

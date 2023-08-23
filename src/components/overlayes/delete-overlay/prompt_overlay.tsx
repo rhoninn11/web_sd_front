@@ -1,4 +1,4 @@
-import { Overlay, Classes, H3, Button, Intent, Card, PortalProvider, TextArea, Label } from "@blueprintjs/core";
+import { Overlay, Classes, H3, Button, Intent, Card, PortalProvider, TextArea, Label, NumericInput } from "@blueprintjs/core";
 import { Code } from "@blueprintjs/icons";
 import classNames from "classnames";
 import { useState } from "react";
@@ -29,6 +29,7 @@ export const PromptOverlay = ({
     const [visible, setVisible] = useState(true);
     const [prompt, setPrompt] = useState<string>(base_cfg.prompt)
     const [negPrompt, setNegPrompt] = useState<string>(base_cfg.prompt_negative)
+    const [seed, setSeed] = useState<number>(base_cfg.seed)
 
     const classes = classNames(
         Classes.CARD,
@@ -41,7 +42,7 @@ export const PromptOverlay = ({
         let cfg: txt2img_config = {
             prompt: prompt,
             prompt_negative: negPrompt,
-            seed: 1,
+            seed: seed,
             samples: 1
         }
         return cfg;
@@ -74,6 +75,12 @@ export const PromptOverlay = ({
                         <TextArea className={styles.higher}
                             value={negPrompt} onChange={(ev) => textAreaEditor(ev, setNegPrompt)}/>
                     </Label>
+                    <NumericInput
+                        min={0}
+                        max={100}
+                        value={seed}
+                        onValueChange={(value) => setSeed(value)}
+                        />
 
                     <div className={Classes.DIALOG_FOOTER_ACTIONS}>
                         <Button intent={Intent.DANGER} onClick={_on_close} style={{ margin: "" }}>

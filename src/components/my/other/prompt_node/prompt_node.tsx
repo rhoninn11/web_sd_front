@@ -9,7 +9,7 @@ import { cloneDeep } from 'lodash';
 
 import { img64, txt2img_config, GenData } from '../../../../types/types_serv_comm';
 import { DBNode } from '../../../../types/types_db';
-import { editDBFilm, getDBNode } from '../../../../logic/db';
+import { editDBNode, getDBNode } from '../../../../logic/db';
 
 interface PromptNodeData {
 	db_id: number;
@@ -42,7 +42,7 @@ const _PromptNode = ({ data }: NodeProps<PromptNodeData>) => {
 		let db_node = await getDBNode(data.db_id)
 		if(db_node){
 			db_node.img = coded_img64;
-			await editDBFilm(data.db_id, db_node)
+			await editDBNode(data.db_id, db_node)
 			console.log('db_img')
 		}
 	}

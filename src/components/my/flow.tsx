@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, MouseEvent } from 'react';
 import ReactFlow, {
 	useNodesState,
 	useEdgesState,
@@ -17,8 +17,8 @@ import { PromptNode } from './other/prompt_node/prompt_node';
 import { GenData } from '../../types/types_serv_comm';
 import { cloneDeep } from 'lodash';
 
-import { addDBNode, addDBEdge, getAllDBEdges, getAllDBNodes } from '../../logic/db';
-import { edge_db2flow, edge_flow2db, node_db2flow, node_flow2db} from '../../logic/convert_utils';
+import { addDBNode, addDBEdge, getAllDBEdges, getAllDBNodes, getDBNode, editDBNode } from '../../logic/db';
+import { edge_db2flow, edge_flow2db, node_db2flow, node_flow2db } from '../../logic/convert_utils';
 import { DBNode } from '../../types/types_db';
 import { ClientServerBridge } from '../../logic/ClientServerBridge';
 import { FlowEdge, FlowNode } from '../../types/types_flow';
@@ -39,7 +39,7 @@ interface NodeTracker {
 
 const AddNodeOnEdgeDrop = () => {
 	const reactFlowWrapper = useRef<HTMLDivElement>(null);
-	const nodeConnectSource = useRef<NodeTracker>({ id: '', gen_data: new GenData()});
+	const nodeConnectSource = useRef<NodeTracker>({ id: '', gen_data: new GenData() });
 	// const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
 	const [nodes, setNodes, onNodesChange] = useNodesState([]);
 	const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -65,8 +65,16 @@ const AddNodeOnEdgeDrop = () => {
 		let hl_data = get_node_hl_data(nodeId);
 		if (hl_data)
 			nodeConnectSource.current.gen_data = cloneDeep(hl_data);
-			console.log(`+++ selected ${nodeId} hl_data`, hl_data)
+		console.log(`+++ selected ${nodeId} hl_data`, hl_data)
 	}, [nodes]);
+
+	const onNodeDrag = useCallback((_0, node, _1) => {
+		let flow_node: FlowNode = node;
+		let db_node = node_flow2db(flow_node)
+		console.log('+++ flow_node', flow_node)
+		console.log('+++ db_node', db_node)
+		editDBNode(db_node.db_id, db_node)
+	}, [])
 
 	const create_new_node = async (event: any, div: HTMLDivElement, sourceNodeData: NodeTracker) => {
 		const { top, left } = div.getBoundingClientRect();
@@ -90,7 +98,7 @@ const AddNodeOnEdgeDrop = () => {
 				higher_level_data: hl_data
 			},
 		};
-		let db_node = node_flow2db(node_db_id, flow_node)
+		let db_node = node_flow2db(flow_node)
 
 		const flow_db_id = edgeNum;
 		let flow_edge: FlowEdge = {
@@ -132,7 +140,7 @@ const AddNodeOnEdgeDrop = () => {
 
 			let flow_nodes = db_nodes.map(node_db2flow)
 			let flow_edges = db_edges.map(edge_db2flow)
-			
+
 			setNodes(flow_nodes);
 			setEdges(flow_edges);
 			setNodeNum(flow_nodes.length);
@@ -157,6 +165,8 @@ const AddNodeOnEdgeDrop = () => {
 				onConnect={onConnect}
 				onConnectStart={onConnectStart}
 				onConnectEnd={onConnectEnd}
+				// onNodeDrag={onNodeDrag}
+				onNodeDragStop={onNodeDrag}
 				fitView
 				fitViewOptions={fitViewOptions}
 				nodeTypes={nodeTypes}

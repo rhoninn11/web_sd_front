@@ -1,6 +1,6 @@
 import { cloneDeep, flow } from "lodash";
-import { DBNode } from "../types/types_db";
-import { FlowNode } from "../types/types_flow";
+import { DBEdge, DBNode } from "../types/types_db";
+import { FlowEdge, FlowNode } from "../types/types_flow";
 
 export const node_db2flow = (db_node: DBNode): FlowNode => {
     let flow_node: FlowNode = {
@@ -8,11 +8,14 @@ export const node_db2flow = (db_node: DBNode): FlowNode => {
         type: db_node.type,
         position: db_node.position,
         data: {
-            label: "ni",
             db_id: db_node.db_id,
-            higher_level_data: {
+            serv_id: db_node.serv_id,
+            data_prompt: {
                 propmt_cfg: cloneDeep(db_node.prompt),
                 img_coded: db_node.img,
+            },
+            data_render: {
+                fresh: false,
             }
         }
     }
@@ -20,30 +23,38 @@ export const node_db2flow = (db_node: DBNode): FlowNode => {
 }
 
 export const node_flow2db = (flow_node: FlowNode):DBNode => {
-    let db_node = {
-        db_id: flow_node.data.db_id,
+    let db_node: DBNode = {
         id: flow_node.id,
+
+        db_id: flow_node.data.db_id,
+        serv_id: flow_node.data.serv_id,
+
         type: flow_node.type,
         position: flow_node.position,
-        img: flow_node.data.higher_level_data.img_coded,
-        prompt: cloneDeep(flow_node.data.higher_level_data.propmt_cfg),
+        img: flow_node.data.data_prompt.img_coded,
+        prompt: cloneDeep(flow_node.data.data_prompt.propmt_cfg),
     }
     return db_node;
 }
 
-export const edge_db2flow = (db_edge: any) => {
-    let flow_edge = {
+export const edge_db2flow = (db_edge: DBEdge): FlowEdge => {
+    let flow_edge: FlowEdge = {
         id: db_edge.id,
+        db_id: db_edge.db_id,
+        serv_id: db_edge.serv_id,
         source: db_edge.source,
         target: db_edge.target,
     }
     return flow_edge;
 }
 
-export const edge_flow2db = (db_id: number, flow_edge: any) => {
-    let db_edge = {
+export const edge_flow2db = (db_id: number, flow_edge: FlowEdge): DBEdge => {
+    let db_edge: DBEdge = {
         db_id: db_id,
+
         id: flow_edge.id,
+        serv_id: flow_edge.serv_id,
+        
         source: flow_edge.source,
         target: flow_edge.target,
     }

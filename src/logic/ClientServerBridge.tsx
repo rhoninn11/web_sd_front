@@ -5,7 +5,7 @@
 
 
 import { w3cwebsocket as W3CWebSocket } from 'websocket';
-import { serverRequest, authData, txt2img, progress, txt2img_config, img64 } from '../types/types_serv_comm';
+import { serverRequest, authData, txt2img, progress, txt2img_config, img64, ServerNode, FlowOps, ServerEdge } from '../types/types_serv_comm';
 import { ProcessorRepository } from './RequestProcessor';
 import { FlowEdge, FlowNode } from '../types/types_flow';
 
@@ -18,18 +18,16 @@ export class ClientServerBridge {
 
 
     private _init (){
-        this.client = new W3CWebSocket(`ws://localhost:${serverPort}`);
+		// get host name from web bar
+		let host = window.location.hostname;
+        this.client = new W3CWebSocket(`ws://${host}:${serverPort}`);
 		this.client.onopen = () => {
-			console.log('WebSocket Client Connected');
-			if (this.client)
-                this._askForAuth(this.client);
+			this._askForAuth();
 		}
 		this.client.onmessage = (message) => {
 			this._handleServerMessage(message.data.toString());
 		}
     }
-
-   
 
     public static getInstance(): ClientServerBridge {
         if (!ClientServerBridge.instance){
@@ -39,9 +37,16 @@ export class ClientServerBridge {
 
         return ClientServerBridge.instance;
     }
-// internals
-    private _askForAuth(client: W3CWebSocket) {
 
+	public sendRequest(req: serverRequest) {
+		if (this.client){
+			let json_string = JSON.stringify(req);
+			this.client.send(json_string);
+		}
+	}
+	
+// internals
+    private _askForAuth() {
 		let authData = {
 			password: 'pulsary55.',
 			auth: false
@@ -52,9 +57,7 @@ export class ClientServerBridge {
 			data: JSON.stringify(authData)
 		}
 
-		let json_string = JSON.stringify(test_obj);
-
-		client.send(json_string);
+		this.sendRequest(test_obj)
 	}
 
     private _handleServerMessage = (message: string) => {
@@ -63,22 +66,23 @@ export class ClientServerBridge {
 	}
 
     private _handleServerRequest (req: serverRequest) {
-		// console.log(respo);
 		if (req.type === 'auth') {
 			this._handleAuth(req.data)
+			return;
 		}
 		if (req.type === 'txt2img') {
 			this._handleTxt2img(req.data)
+			return;
 		}
 		if (req.type === 'progress') {
 			this._handleProgress(req.data)
+			return;
 		}
+		console.log('+++ handle server request');
 
-		let proc_repo = ProcessorRepository.getInstance()
-		let proc = proc_repo.get_processor(req.type)
-		if (proc) {
-			proc.from_server(req);
-		}
+		ProcessorRepository.getInstance()
+		.get_processor(req.type)
+		?.from_server(req);
 	}
 
 	private _handleAuth (data: string) {
@@ -134,9 +138,8 @@ export class ClientServerBridge {
 	public onText2imgProgress: ((data:any)=> void)[] = []
 
     public send_txt2_img(cfg: txt2img_config){
-		if (!this.client) {
+		if (!this.client)
 			return;
-		}
 
 		let txt2img_entry: txt2img = {
 			txt2img: {
@@ -146,23 +149,30 @@ export class ClientServerBridge {
 			}
 		};
 
-		let txt2img_object: serverRequest = {
+		let txt2img_req: serverRequest = {
 			type: 'txt2img',
 			data: JSON.stringify(txt2img_entry)
 		}
 
-		console.log("txt2img_object");
-		let json_string = JSON.stringify(txt2img_object);
-		console.log(this.client);
-		this.client.send(json_string);
+		this.sendRequest(txt2img_req)
 	}
 
-	public send_node(flow_node: FlowNode) {
-		console.log('send_node not implemented');
+	public send_node(flow_node: FlowNode, on_finish: (serv_node: ServerNode) => void) {
+		let server_node = new ServerNode();
+		server_node.node_op = FlowOps.CREATE;
+	
+		ProcessorRepository.getInstance()
+			.get_processor('serverNode')
+			?.to_server(server_node, on_finish)
 	}
 
-	public send_edge(flow_edge: FlowEdge) {
-		console.log('send_edge not implemented');
+	public send_edge(flow_edge: FlowEdge, on_finish: (serv_edge: ServerEdge) => void) {
+		let server_edge = new ServerEdge();
+		server_edge.node_op = FlowOps.CREATE;
+	
+		ProcessorRepository.getInstance()
+			.get_processor('serverEdge')
+			?.to_server(server_edge, on_finish)
 	}
 
 

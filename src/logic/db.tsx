@@ -1,6 +1,6 @@
 import { DBSchema, openDB } from "idb";
 import { txt2img_content } from "../types/types_serv_comm";
-import { Edge, Generation, DBNode } from "../types/types_db";
+import { DBEdge, Generation, DBNode } from "../types/types_db";
 
 const GEN_FIELD = "gen";
 const NODE_FIELD = "node";
@@ -17,7 +17,7 @@ interface Wb_Sd_Db extends DBSchema {
     };
     edge: {
         key: number;
-        value: Edge;
+        value: DBEdge;
     };
 }
 
@@ -82,7 +82,7 @@ export let editDBNode = async (id: number, updated_value: DBNode) => {
     }
 }
 
-export let addDBEdge = async (new_edge: Edge) => {
+export let addDBEdge = async (new_edge: DBEdge) => {
     let job = _get_store(EDGE_FIELD)
         .then((store) => store.add(new_edge))
     return await job
@@ -91,6 +91,6 @@ export let addDBEdge = async (new_edge: Edge) => {
 
 export let getAllDBEdges = async () => {
     const db = await initDB();
-    const all_edges: Edge[] = await db.getAll(EDGE_FIELD);
+    const all_edges: DBEdge[] = await db.getAll(EDGE_FIELD);
     return all_edges;
 }

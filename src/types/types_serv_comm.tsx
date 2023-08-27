@@ -1,3 +1,5 @@
+import { cloneDeep } from "lodash";
+
 // general
 export interface serverRequest {
     type: string;
@@ -55,7 +57,33 @@ export interface progress_content {
     value: number;
 }
 
-export class GenData {
+export class PromptRealatedData {
 	propmt_cfg: txt2img_config = new txt2img_config();
 	img_coded: string = '';
+
+    constructor(){
+    }
+
+    public clone(other: PromptRealatedData, copy_img: boolean = false){
+        this.propmt_cfg = cloneDeep(other.propmt_cfg);
+        if(copy_img)
+            this.img_coded = other.img_coded;
+        return this;
+    }
+}
+export enum FlowOps {
+    NONE = 'none',
+    CREATE = 'create',
+}
+
+export class ServerNode {
+    serv_id: string = '';
+    user_id: string = '';
+    node_op: FlowOps = FlowOps.NONE;
+}
+
+export class ServerEdge {
+    serv_id: string = '';
+    user_id: string = '';
+    node_op: FlowOps = FlowOps.NONE;
 }

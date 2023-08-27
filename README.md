@@ -9,6 +9,6 @@ Node interface for using stable diffusion within a flow state
 
 ## What next:
 -prompt preview on hover
--open prompt editor on node create
--share state with server
+-open prompt editor on node create +
+-share state with server ~+
 

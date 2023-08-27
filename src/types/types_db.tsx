@@ -14,15 +14,19 @@ export interface Generation {
 export interface DBNode {
     db_id: number;
     id: string;
+    serv_id: string;
+
     type: string;
     position: NodePosition;
-    img: string;
     prompt: txt2img_config
+    img: string;
 }
 
-export interface Edge {
+export interface DBEdge {
     db_id: number;
+    
     id: string;
+    serv_id: string;
     source: string;
     target: string;
 }

@@ -58,8 +58,8 @@ export interface progress_content {
 }
 
 export class PromptRealatedData {
-	propmt_cfg: txt2img_config = new txt2img_config();
-	img_coded: string = '';
+	public propmt_cfg: txt2img_config = new txt2img_config();
+	public img_coded: string = '';
 
     constructor(){
     }

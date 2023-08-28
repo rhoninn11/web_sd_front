@@ -1,8 +1,14 @@
 import { cloneDeep, flow } from "lodash";
 import { DBEdge, DBNode } from "../types/types_db";
-import { FlowEdge, FlowNode } from "../types/types_flow";
+import { EdgeStyle, FlowEdge, FlowNode } from "../types/types_flow";
+import { PromptRealatedData } from "../types/types_serv_comm";
 
 export const node_db2flow = (db_node: DBNode): FlowNode => {
+
+    let prompt_data_rel = new PromptRealatedData();
+    prompt_data_rel.propmt_cfg = cloneDeep(db_node.prompt);
+    prompt_data_rel.img_coded = db_node.img;
+
     let flow_node: FlowNode = {
         id: db_node.id,
         type: db_node.type,
@@ -10,10 +16,7 @@ export const node_db2flow = (db_node: DBNode): FlowNode => {
         data: {
             db_id: db_node.db_id,
             serv_id: db_node.serv_id,
-            data_prompt: {
-                propmt_cfg: cloneDeep(db_node.prompt),
-                img_coded: db_node.img,
-            },
+            data_prompt: prompt_data_rel,
             data_render: {
                 fresh: false,
             }
@@ -44,6 +47,7 @@ export const edge_db2flow = (db_edge: DBEdge): FlowEdge => {
         serv_id: db_edge.serv_id,
         source: db_edge.source,
         target: db_edge.target,
+        style: new EdgeStyle(),
     }
     return flow_edge;
 }

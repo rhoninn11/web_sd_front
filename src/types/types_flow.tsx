@@ -28,4 +28,13 @@ export interface FlowEdge {
     serv_id: string;
     source: string;
     target: string;
+
+    style: EdgeStyle;
+}
+
+
+
+export class EdgeStyle {
+    strokeWidth: number = 2;
+    stroke: string = '#FF0072';
 }

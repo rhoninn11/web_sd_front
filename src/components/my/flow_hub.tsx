@@ -1,3 +1,5 @@
+import styles from './flow_hub.module.scss';
+
 import React, { useCallback, useEffect, useRef, useState, MouseEvent } from 'react';
 import ReactFlow, {
 	useNodesState,
@@ -8,23 +10,26 @@ import ReactFlow, {
 	MiniMap,
 	Controls,
 	Background,
+	OnMove,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
-import styles from './s.module.scss';
-import { CustomNode } from './other/custom-node';
-import { PromptNode } from './other/prompt_node/prompt_node';
-import { PromptRealatedData, ServerEdge, ServerNode } from '../../types/types_serv_comm';
-import { cloneDeep, flow } from 'lodash';
+import { PromptNode } from './prompt_node';
+import { PromptEdge } from './prompt_edge';
+
 
 import { addDBNode, addDBEdge, getAllDBEdges, getAllDBNodes, getDBNode, editDBNode } from '../../logic/db';
 import { edge_db2flow, edge_flow2db, node_db2flow, node_flow2db } from '../../logic/convert_utils';
-import { DBNode } from '../../types/types_db';
 import { ClientServerBridge } from '../../logic/ClientServerBridge';
-import { FlowEdge, FlowNode } from '../../types/types_flow';
+
+// types
+import { PromptRealatedData, ServerEdge, ServerNode } from '../../types/types_serv_comm';
+import { EdgeStyle, FlowEdge, FlowNode } from '../../types/types_flow';
+import { onMove, onMoveEnd, onMoveStart } from '../../tests/canvas_move_test';
+
+import { MoveObserver } from '../../tests/canvas_move_test';
 
 const nodeTypes = {
-	custom: CustomNode,
 	prompt: PromptNode,
 }
 
@@ -55,16 +60,14 @@ const AddNodeOnEdgeDrop = () => {
 			let legit_node = this_node as FlowNode
 			return legit_node.data.data_prompt;
 		}
-		return undefined;
+		return new PromptRealatedData();
 	}
 
 	const onConnectStart = useCallback((eventInfo, nodeInfo) => {
 		let nodeId = nodeInfo?.nodeId;
 		nodeConnectSource.current.id = nodeId;
+		nodeConnectSource.current.data_prompt = get_node_hl_data(nodeId);
 
-		let hl_data = get_node_hl_data(nodeId);
-		if (hl_data)
-			nodeConnectSource.current.data_prompt = cloneDeep(hl_data);
 	}, [nodes]);
 
 	const onNodeDrag = useCallback((_0, node, _1) => {
@@ -141,8 +144,8 @@ const AddNodeOnEdgeDrop = () => {
 			db_id: flow_db_id,
 			serv_id: '',
 			source: nodeConnectSource.current.id,
-			target: node_db_id.toString()
-
+			target: node_db_id.toString(),
+			style: new EdgeStyle(),
 		};
 
 		ask_serv_to_create_node(flow_node)
@@ -178,6 +181,7 @@ const AddNodeOnEdgeDrop = () => {
 		fetchData();
 	}, []);
 
+	let move_obs = MoveObserver.getInstance();
 
 	return (
 		<div className={styles.wrapper} ref={reactFlowWrapper}>
@@ -194,9 +198,13 @@ const AddNodeOnEdgeDrop = () => {
 				onConnectEnd={onConnectEnd}
 				// onNodeDrag={onNodeDrag}
 				onNodeDragStop={onNodeDrag}
+				connectionLineComponent={PromptEdge}
 				fitView
 				fitViewOptions={fitViewOptions}
 				nodeTypes={nodeTypes}
+				onMoveStart={move_obs.onMoveStart}
+				onMove={move_obs.onMove}
+				onMoveEnd={move_obs.onMoveEnd}
 			/>
 
 		</div>

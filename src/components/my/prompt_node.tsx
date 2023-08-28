@@ -1,15 +1,15 @@
 import React, { memo, useEffect, useState } from 'react';
 import { Handle, NodeProps, Position } from 'reactflow';
-import styles from './s.module.scss';
+import styles from './prompt_node.module.scss';
 import { Button, Intent, ProgressBar} from '@blueprintjs/core';
-import { useServerContext } from '../../../server/SocketProvider';
-import { ClientServerBridge } from '../../../../logic/ClientServerBridge';
-import { PromptOverlay } from '../../../overlayes/delete-overlay/prompt_overlay';
+import { useServerContext } from '../server/SocketProvider';
+import { ClientServerBridge } from '../../logic/ClientServerBridge';
+import { PromptOverlay } from '../overlayes/delete-overlay/prompt_overlay';
 import { cloneDeep } from 'lodash';
 
-import { img64, txt2img_config, PromptRealatedData } from '../../../../types/types_serv_comm';
-import { editDBNode, getDBNode } from '../../../../logic/db';
-import { NodeData } from '../../../../types/types_flow';
+import { img64, txt2img_config, PromptRealatedData } from '../../types/types_serv_comm';
+import { editDBNode, getDBNode } from '../../logic/db';
+import { NodeData } from '../../types/types_flow';
 
 
 

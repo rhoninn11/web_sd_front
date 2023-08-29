@@ -38,7 +38,7 @@ export class MoveObserver{
     }
 
     public onMoveStart = (event: MouseEvent | TouchEvent, viewport: Viewport): void => {
-        console.log('!!! Move Start')
+        // console.log('!!! Move Start')
         this.timestump = Date.now();
         this.lastX = viewport.x;
         this.lastY = viewport.y;
@@ -61,7 +61,7 @@ export class MoveObserver{
         this.timestump = now;
     }
     public onMoveEnd = (event: MouseEvent | TouchEvent, viewport: Viewport): void => {
-        let dt = 0.025
+        let dt = 0.025 // 40FPS
         let holder: HoldInterval = new HoldInterval();
 
         let interval = setInterval(() => {
@@ -82,7 +82,7 @@ export class MoveObserver{
                 }
             }
 
-            console.log('speedX', this.speedX, 'speedY', this.speedY)
+            // console.log('speedX', this.speedX, 'speedY', this.speedY)
 
 
         }, dt*1000);

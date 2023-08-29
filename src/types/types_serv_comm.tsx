@@ -10,6 +10,7 @@ export interface serverRequest {
 export interface authData {
 	password: string;
 	auth: boolean;
+    user_id: string;
 }
 
 //txt2img

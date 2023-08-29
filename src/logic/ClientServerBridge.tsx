@@ -47,9 +47,11 @@ export class ClientServerBridge {
 	
 // internals
     private _askForAuth() {
-		let authData = {
+		let authData: authData = {
 			password: 'pulsary55.',
-			auth: false
+			auth: false,
+			user_id: '',
+
 		}
 
 		let test_obj: serverRequest = {

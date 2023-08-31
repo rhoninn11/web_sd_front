@@ -1,4 +1,5 @@
 import { cloneDeep } from "lodash";
+import { NodePosition } from "./types_common";
 
 // general
 export interface serverRequest {
@@ -75,12 +76,15 @@ export class PromptRealatedData {
 export enum FlowOps {
     NONE = 'none',
     CREATE = 'create',
+    DELETE = 'delete',
 }
 
 export class ServerNode {
     serv_id: string = '';
     user_id: string = '';
     node_op: FlowOps = FlowOps.NONE;
+    pos: NodePosition = {x: 0, y: 0};
+    deleted: boolean = false;
 }
 
 export class ServerEdge {

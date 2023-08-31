@@ -2,7 +2,7 @@ import { NodePosition } from "./types_common";
 import { PromptRealatedData } from "./types_serv_comm";
 
 
-class RenderData {
+export class RenderData {
     fresh: boolean = false;
 }
 

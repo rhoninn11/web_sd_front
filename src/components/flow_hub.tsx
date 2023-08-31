@@ -18,16 +18,16 @@ import { PromptNode } from './prompt_node';
 import { PromptEdge } from './prompt_edge';
 
 
-import { addDBNode, addDBEdge, getAllDBEdges, getAllDBNodes, getDBNode, editDBNode } from '../../logic/db';
-import { edge_db2flow, edge_flow2db, node_db2flow, node_flow2db } from '../../logic/convert_utils';
-import { ClientServerBridge } from '../../logic/ClientServerBridge';
+import { addDBNode, addDBEdge, getAllDBEdges, getAllDBNodes, getDBNode, editDBNode } from '../logic/db';
+import { edge_db2flow, edge_flow2db, node_db2flow, node_flow2db } from '../logic/convert_utils';
+import { ClientServerBridge } from '../logic/ClientServerBridge';
 
 // types
-import { PromptRealatedData, ServerEdge, ServerNode } from '../../types/types_serv_comm';
-import { EdgeStyle, FlowEdge, FlowNode } from '../../types/types_flow';
-import { onMove, onMoveEnd, onMoveStart } from '../../tests/canvas_move_test';
+import { PromptRealatedData, ServerEdge, ServerNode } from '../types/types_serv_comm';
+import { EdgeStyle, FlowEdge, FlowNode } from '../types/types_flow';
+import { onMove, onMoveEnd, onMoveStart } from '../tests/canvas_move_test';
 
-import { MoveObserver } from '../../tests/canvas_move_test';
+import { MoveObserver } from '../tests/canvas_move_test';
 
 const nodeTypes = {
 	prompt: PromptNode,
@@ -120,6 +120,7 @@ const AddNodeOnEdgeDrop = () => {
 
 	const create_new_node = async (event: any, div: HTMLDivElement, sourceNodeData: NodeTracker) => {
 
+		console.log('+++ 03 create_new_node')
 		let prompt_data = new PromptRealatedData()
 			.clone(sourceNodeData.data_prompt, false)
 

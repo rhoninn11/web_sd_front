@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { w3cwebsocket as W3CWebSocket } from 'websocket';
-import { txt2img, serverRequest, authData } from '../../types/types_serv_comm';
-import { ClientServerBridge } from '../../logic/ClientServerBridge';
+import { txt2img, serverRequest, authData } from '../types/types_serv_comm';
+import { ClientServerBridge } from '../logic/ClientServerBridge';
 
 export interface ServerContextType {
 	isAuthenticated: boolean;

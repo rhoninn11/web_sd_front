@@ -6,16 +6,20 @@
 
 import { w3cwebsocket as W3CWebSocket } from 'websocket';
 import { serverRequest, authData, txt2img, progress, txt2img_config, img64, ServerNode, FlowOps, ServerEdge } from '../types/types_serv_comm';
-import { ProcessorRepository } from './RequestProcessor';
+import { ProcessorRepository } from './request_processing/RequestProcessor';
 import { FlowEdge, FlowNode } from '../types/types_flow';
 
 const serverPort = 8700;
 
 export class ClientServerBridge {
 
-    private static instance: ClientServerBridge;
+	private static instance: ClientServerBridge;
+	private req_proc: ProcessorRepository;
     private client: W3CWebSocket | null = null;
-
+	
+	private constructor() {
+		this.req_proc = ProcessorRepository.getInstance();
+	}
 
     private _init (){
 		// get host name from web bar
@@ -82,8 +86,7 @@ export class ClientServerBridge {
 		}
 		console.log('+++ handle server request');
 
-		ProcessorRepository.getInstance()
-		.get_processor(req.type)
+		this.req_proc.get_processor(req.type)
 		?.from_server(req);
 	}
 
@@ -162,9 +165,18 @@ export class ClientServerBridge {
 	public send_node(flow_node: FlowNode, on_finish: (serv_node: ServerNode) => void) {
 		let server_node = new ServerNode();
 		server_node.node_op = FlowOps.CREATE;
-	
-		ProcessorRepository.getInstance()
-			.get_processor('serverNode')
+		server_node.pos = flow_node.position;
+		console.log('+++ send_node', server_node);
+		this.req_proc.get_processor('serverNode')
+			?.to_server(server_node, on_finish)
+	}
+
+	public delete_node(flow_node: FlowNode, on_finish: (serv_node: ServerNode) => void) {
+		let server_node = new ServerNode();
+		server_node.node_op = FlowOps.CREATE;
+		server_node.deleted = true;
+
+		this.req_proc.get_processor('serverNode')
 			?.to_server(server_node, on_finish)
 	}
 
@@ -172,8 +184,7 @@ export class ClientServerBridge {
 		let server_edge = new ServerEdge();
 		server_edge.node_op = FlowOps.CREATE;
 	
-		ProcessorRepository.getInstance()
-			.get_processor('serverEdge')
+		this.req_proc.get_processor('serverEdge')
 			?.to_server(server_edge, on_finish)
 	}
 

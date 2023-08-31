@@ -2,14 +2,15 @@ import React, { memo, useEffect, useState } from 'react';
 import { Handle, NodeProps, Position } from 'reactflow';
 import styles from './prompt_node.module.scss';
 import { Button, Intent, ProgressBar} from '@blueprintjs/core';
-import { useServerContext } from '../server/SocketProvider';
-import { ClientServerBridge } from '../../logic/ClientServerBridge';
-import { PromptOverlay } from '../overlayes/delete-overlay/prompt_overlay';
+import { useServerContext } from './SocketProvider';
+import { ClientServerBridge } from '../logic/ClientServerBridge';
+import { PromptOverlay } from './prompt_overlay';
 import { cloneDeep } from 'lodash';
 
-import { img64, txt2img_config, PromptRealatedData } from '../../types/types_serv_comm';
-import { editDBNode, getDBNode } from '../../logic/db';
-import { NodeData } from '../../types/types_flow';
+import { img64, txt2img_config, PromptRealatedData } from '../types/types_serv_comm';
+import { editDBNode, getDBNode } from '../logic/db';
+import { NodeData } from '../types/types_flow';
+import { MenuTest } from './menu_test';
 
 
 
@@ -124,18 +125,27 @@ const _PromptNode = ({ data }: NodeProps<NodeData>) => {
         </div>
 
 
+
 	return (
 		<>
 			<Handle
 				type="target"
 				position={Position.Left}
 				style={{ background: '#555' }}
-				onConnect={(params) => console.log('handle onConnect', params)}
+				onConnect={(params) => console.log('handle onConnect left', params)}
+				isConnectable={true}
+			/>
+			<Handle
+				type="target"
+				position={Position.Top}
+				style={{ background: '#555' }}
+				onConnect={(params) => console.log('handle onConnect top', params)}
 				isConnectable={true}
 			/>
 			<div className={styles.nice_box}>
 				Stable diffusion XL txt2img
 				{display_content}
+				<MenuTest />
 			</div>
 			<Handle
 				type="source"

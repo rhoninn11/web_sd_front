@@ -1,11 +1,11 @@
+import styles from "./prompt_overlay.module.scss"
 import { Overlay, Classes, H3, Button, Intent, Card, PortalProvider, TextArea, Label, NumericInput } from "@blueprintjs/core";
 import { Code } from "@blueprintjs/icons";
 import classNames from "classnames";
 import { useState } from "react";
 
-import styles from "./s.module.scss"
-import { textAreaEditor } from "../../../logic/editor-helper";
-import { txt2img_config } from "../../../types/types_serv_comm";
+import { textAreaEditor } from "../logic/editor-helper";
+import { txt2img_config } from "../types/types_serv_comm";
 
 interface RecipeOverlayProps {
     className?: string;

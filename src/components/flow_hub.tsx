@@ -23,11 +23,12 @@ import { edge_db2flow, edge_flow2db, node_db2flow, node_flow2db } from '../logic
 import { ClientServerBridge } from '../logic/ClientServerBridge';
 
 // types
-import { PromptRealatedData, ServerEdge, ServerNode } from '../types/types_serv_comm';
-import { EdgeStyle, FlowEdge, FlowNode } from '../types/types_flow';
-import { onMove, onMoveEnd, onMoveStart } from '../tests/canvas_move_test';
+import { moveCB } from '../tests/canvas_move_test';
 
 import { MoveObserver } from '../tests/canvas_move_test';
+import { PromptRealatedData } from '../types/02_serv_t';
+import { FlowNode, ServerNode } from '../types/01_node_t';
+import { EdgeStyle, FlowEdge, ServerEdge } from '../types/04_edge_t';
 
 const nodeTypes = {
 	prompt: PromptNode,
@@ -51,6 +52,20 @@ const AddNodeOnEdgeDrop = () => {
 	const [nodeNum, setNodeNum] = useState(0);
 	const [edgeNum, setEdgeNum] = useState(0);
 	const { project } = useReactFlow();
+
+
+	const { setCenter, getZoom } = useReactFlow();
+
+	const setCenter_test: moveCB = (x, y, duration) => {
+		const _x = x;
+		const _y = y;
+		const zoom = getZoom();
+
+		//   console.log('+++ setCenter_test' , _x, "  ", _y, "  ", duration)
+
+		// setCenter(0, 1000, { zoom, duration });
+	};
+
 	const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), []);
 
 
@@ -81,39 +96,36 @@ const AddNodeOnEdgeDrop = () => {
 	let ask_serv_to_create_node = (flow_node: FlowNode) => {
 		return new Promise<void>((resolve, reject) => {
 			let on_serv_accept = async (serv_node: ServerNode) => {
-				flow_node.data.serv_id = serv_node.serv_id;
 
-				setNodes((nds) => nds.concat(flow_node));
+				let _flow_node = node_db2flow(serv_node.db_node);
+				setNodes((nds) => nds.concat(_flow_node));
 				setNodeNum(nodeNum + 1);
-				let db_node = node_flow2db(flow_node)
-				await addDBNode(db_node);
-				console.log('+++ 00 node from server created')
+				await addDBNode(serv_node.db_node);
 				resolve();
 			}
-
+			
+			let db_node = node_flow2db(flow_node)
 			ClientServerBridge.getInstance()
-				.send_node(flow_node, on_serv_accept);
+				.send_node(db_node, on_serv_accept);
 		});
 
 	}
 
 	let ask_serv_to_create_edge = (flow_edge: FlowEdge) => {
 
-		console.log('+++ 01 ask_serv_to_create_edge')
 		return new Promise<void>((resolve, reject) => {
 			let on_serv_accept = async (serv_edge: ServerEdge) => {
-				flow_edge.serv_id = serv_edge.serv_id;
-
-				let db_edge = edge_flow2db(edges.length, flow_edge)
-				setEdges((eds) => eds.concat(flow_edge));
+				
+				let _flow_edge = edge_db2flow(serv_edge.db_edge);
+				setEdges((eds) => eds.concat(_flow_edge));
 				setEdgeNum(edgeNum + 1);
-				await addDBEdge(db_edge);
-				console.log('+++ 02 edge from server created')
+				await addDBEdge(serv_edge.db_edge);
 				resolve();
 			}
-
+			
+			let db_edge = edge_flow2db(flow_edge)
 			ClientServerBridge.getInstance()
-				.send_edge(flow_edge, on_serv_accept);
+				.send_edge(db_edge, on_serv_accept);
 		});
 
 	}
@@ -150,7 +162,7 @@ const AddNodeOnEdgeDrop = () => {
 		};
 
 		ask_serv_to_create_node(flow_node)
-		.then(() => ask_serv_to_create_edge(flow_edge))
+			.then(() => ask_serv_to_create_edge(flow_edge))
 	}
 
 	const place_node = (event: any) => {
@@ -165,6 +177,7 @@ const AddNodeOnEdgeDrop = () => {
 
 
 
+	const move_obs = MoveObserver.getInstance();
 	useEffect(() => {
 		const fetchData = async () => {
 			let db_nodes = await getAllDBNodes()
@@ -177,12 +190,13 @@ const AddNodeOnEdgeDrop = () => {
 			setEdges(flow_edges);
 			setNodeNum(flow_nodes.length);
 			setEdgeNum(flow_edges.length);
+			console.log('+++ 01 ', flow_nodes.length, "  ", flow_edges.length)
 		};
 
+		move_obs.setCb(setCenter_test);
 		fetchData();
 	}, []);
 
-	let move_obs = MoveObserver.getInstance();
 
 	return (
 		<div className={styles.wrapper} ref={reactFlowWrapper}>
@@ -199,7 +213,6 @@ const AddNodeOnEdgeDrop = () => {
 				onConnectEnd={onConnectEnd}
 				// onNodeDrag={onNodeDrag}
 				onNodeDragStop={onNodeDrag}
-				connectionLineComponent={PromptEdge}
 				fitView
 				fitViewOptions={fitViewOptions}
 				nodeTypes={nodeTypes}

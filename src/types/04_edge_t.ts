@@ -1,25 +1,14 @@
-import { NodePosition } from "./types_common";
-import { PromptRealatedData } from "./types_serv_comm";
+import { FlowOps } from "./00_flow_t";
 
+export class DBEdge {
+    db_id: number = -1;
+    id: string = '';
+    serv_id: string = '';
 
-export class RenderData {
-    fresh: boolean = false;
+    source: string = '';
+    target: string = '';
 }
 
-
-export interface NodeData {
-	db_id: number;
-    serv_id: string;
-	data_prompt: PromptRealatedData;
-    data_render: RenderData;
-}
-
-export interface FlowNode {
-    id: string;
-    type: string;
-    position: NodePosition;
-    data: NodeData
-}
 
 export interface FlowEdge {
     id: string;
@@ -41,9 +30,13 @@ enum EDGE_COLOR {
     COLOR_6 = '#355C7D',
 }
 
-
-
 export class EdgeStyle {
     strokeWidth: number = 2;
     stroke: string = EDGE_COLOR.COLOR_2;
+}
+
+export class ServerEdge {
+    user_id: string = '';
+    node_op: FlowOps = FlowOps.NONE;
+    db_edge: DBEdge = new DBEdge();
 }

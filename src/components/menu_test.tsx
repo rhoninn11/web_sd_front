@@ -4,11 +4,13 @@ import { Classes, Menu, MenuItem } from "@blueprintjs/core";
 interface MenuTestProps {
     className?: string;
     children?: React.ReactNode;
+    test: () => void;
 }
 
 export const MenuTest = ({
     className,
     children,
+    test
 }: MenuTestProps) => {
 
     return (
@@ -20,6 +22,7 @@ export const MenuTest = ({
                     <>
                         <MenuItem icon="add" text="Add new" />
                         <MenuItem icon="remove" text="Remove" />
+                        <MenuItem icon="document" text="test" onClick={test}/>
                     </>
                 )}
             />

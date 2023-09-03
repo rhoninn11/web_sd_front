@@ -1,7 +1,7 @@
 import { cloneDeep, flow } from "lodash";
-import { DBEdge, DBNode } from "../types/types_db";
-import { EdgeStyle, FlowEdge, FlowNode } from "../types/types_flow";
-import { PromptRealatedData } from "../types/types_serv_comm";
+import { DBNode, FlowNode } from "../types/01_node_t";
+import { PromptRealatedData } from "../types/02_serv_t";
+import { DBEdge, EdgeStyle, FlowEdge } from "../types/04_edge_t";
 
 export const node_db2flow = (db_node: DBNode): FlowNode => {
 
@@ -52,9 +52,9 @@ export const edge_db2flow = (db_edge: DBEdge): FlowEdge => {
     return flow_edge;
 }
 
-export const edge_flow2db = (db_id: number, flow_edge: FlowEdge): DBEdge => {
+export const edge_flow2db = (flow_edge: FlowEdge): DBEdge => {
     let db_edge: DBEdge = {
-        db_id: db_id,
+        db_id: flow_edge.db_id,
 
         id: flow_edge.id,
         serv_id: flow_edge.serv_id,

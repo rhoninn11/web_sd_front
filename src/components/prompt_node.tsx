@@ -1,11 +1,12 @@
 import React, { memo, useEffect, useState } from 'react';
-import { Handle, NodeProps, Position } from 'reactflow';
+
+import { Handle, NodeProps, Position, useReactFlow } from 'reactflow';
 import styles from './prompt_node.module.scss';
 import { Button, Intent, ProgressBar} from '@blueprintjs/core';
 import { useServerContext } from './SocketProvider';
 import { ClientServerBridge } from '../logic/ClientServerBridge';
 import { PromptOverlay } from './prompt_overlay';
-import { cloneDeep } from 'lodash';
+import { cloneDeep, get } from 'lodash';
 
 import { img64, txt2img_config, PromptRealatedData } from '../types/types_serv_comm';
 import { editDBNode, getDBNode } from '../logic/db';
@@ -145,7 +146,7 @@ const _PromptNode = ({ data }: NodeProps<NodeData>) => {
 			<div className={styles.nice_box}>
 				Stable diffusion XL txt2img
 				{display_content}
-				<MenuTest />
+				<MenuTest test={() => console.log("test")}/>
 			</div>
 			<Handle
 				type="source"

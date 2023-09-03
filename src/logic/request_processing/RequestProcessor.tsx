@@ -1,4 +1,4 @@
-import { serverRequest } from "../../types/types_serv_comm"
+import { serverRequest } from "../../types/02_serv_t";
 import { ClientServerBridge } from "../ClientServerBridge";
 import { EdgeRequestProcessor } from "./EdgeRequestProcessor";
 import { NodeRequestProcessor } from "./NodeRequestProcessor";

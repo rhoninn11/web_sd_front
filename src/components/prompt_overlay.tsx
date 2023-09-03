@@ -5,7 +5,7 @@ import classNames from "classnames";
 import { useState } from "react";
 
 import { textAreaEditor } from "../logic/editor-helper";
-import { txt2img_config } from "../types/types_serv_comm";
+import { txt2img_config } from "../types/03_sd_t";
 
 interface RecipeOverlayProps {
     className?: string;

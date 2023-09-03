@@ -1,4 +1,5 @@
-import { ServerNode, serverRequest } from "../../types/types_serv_comm";
+import { ServerNode } from "../../types/01_node_t";
+import { serverRequest } from "../../types/02_serv_t";
 import { RequestProcessor, FinishCB } from "./RequestProcessor";
 
 export class NodeRequestProcessor extends RequestProcessor<ServerNode> {

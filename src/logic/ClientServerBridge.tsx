@@ -5,9 +5,12 @@
 
 
 import { w3cwebsocket as W3CWebSocket } from 'websocket';
-import { serverRequest, authData, txt2img, progress, txt2img_config, img64, ServerNode, FlowOps, ServerEdge } from '../types/types_serv_comm';
 import { ProcessorRepository } from './request_processing/RequestProcessor';
-import { FlowEdge, FlowNode } from '../types/types_flow';
+import { DBNode, FlowNode, ServerNode } from '../types/01_node_t';
+import { FlowOps } from '../types/00_flow_t';
+import { DBEdge, ServerEdge } from '../types/04_edge_t';
+import { img64, txt2img, txt2img_config } from '../types/03_sd_t';
+import { serverRequest, authData, progress } from '../types/02_serv_t';
 
 const serverPort = 8700;
 
@@ -162,10 +165,10 @@ export class ClientServerBridge {
 		this.sendRequest(txt2img_req)
 	}
 
-	public send_node(flow_node: FlowNode, on_finish: (serv_node: ServerNode) => void) {
+	public send_node(db_node: DBNode, on_finish: (serv_node: ServerNode) => void) {
 		let server_node = new ServerNode();
 		server_node.node_op = FlowOps.CREATE;
-		server_node.pos = flow_node.position;
+		server_node.db_node = db_node;
 		console.log('+++ send_node', server_node);
 		this.req_proc.get_processor('serverNode')
 			?.to_server(server_node, on_finish)
@@ -174,15 +177,15 @@ export class ClientServerBridge {
 	public delete_node(flow_node: FlowNode, on_finish: (serv_node: ServerNode) => void) {
 		let server_node = new ServerNode();
 		server_node.node_op = FlowOps.CREATE;
-		server_node.deleted = true;
 
 		this.req_proc.get_processor('serverNode')
 			?.to_server(server_node, on_finish)
 	}
 
-	public send_edge(flow_edge: FlowEdge, on_finish: (serv_edge: ServerEdge) => void) {
+	public send_edge(db_edge: DBEdge, on_finish: (serv_edge: ServerEdge) => void) {
 		let server_edge = new ServerEdge();
 		server_edge.node_op = FlowOps.CREATE;
+		server_edge.db_edge = db_edge
 	
 		this.req_proc.get_processor('serverEdge')
 			?.to_server(server_edge, on_finish)

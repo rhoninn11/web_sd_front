@@ -1,17 +1,28 @@
-import React, { memo } from 'react';
-import { ConnectionLineComponent } from 'reactflow';
+import React, { memo, useCallback } from 'react';
+import { ConnectionLineComponent, Edge, getBezierPath, useStore, Position } from 'reactflow';
+import { FlowEdge } from '../types/04_edge_t';
+import { getEdgeParams } from '../logic/edge_utils';
 
-const _PromptEdge: ConnectionLineComponent = ({
-    fromX,
-    fromY,
-    fromPosition,
-    toX,
-    toY,
-    toPosition,
-    connectionLineType,
-    connectionLineStyle,
-}) => {
+const _PromptEdge = (elo: Edge<FlowEdge>) => {
+    const sourceNode = elo.sourceNode
+    const targetNode = elo.targetNode
+    
+    if (!sourceNode || !targetNode) {
+        return null;
+    }
 
+    const { sx, sy, tx, ty, sourcePos, targetPos } = getEdgeParams(sourceNode, targetNode);
+
+    const [edgePath] = getBezierPath({
+      sourceX: sx as number,
+      sourceY: sy as number,
+      sourcePosition: sourcePos as Position,
+      targetPosition: targetPos as Position,
+      targetX: tx as number,
+      targetY: ty as number,
+      curvature: 0.2,
+    });
+    // console.log("edgePath: ", edgePath);
 
     return (
         <g>
@@ -20,9 +31,9 @@ const _PromptEdge: ConnectionLineComponent = ({
                 stroke="#fff"
                 strokeWidth={1.5}
                 className="animated"
-                d={`M${fromX},${fromY} C ${fromX} ${toY} ${fromX} ${toY} ${toX},${toY}`}
+                d={edgePath}
             />
-            <circle cx={toX} cy={toY} fill="#fff" r={3} stroke="#222" strokeWidth={1.5} />
+            {/* <circle cx={toX} cy={toY} fill="#fff" r={3} stroke="#222" strokeWidth={1.5} /> */}
         </g>
     );
 };

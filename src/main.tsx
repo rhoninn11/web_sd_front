@@ -8,13 +8,11 @@ import '@blueprintjs/datetime/lib/css/blueprint-datetime.css';
 import '@blueprintjs/icons/lib/css/blueprint-icons.css';
 import '@blueprintjs/select/lib/css/blueprint-select.css';
 import '@blueprintjs/table/lib/css/table.css';
-import { ProcessorRepository } from './logic/request_processing/RequestProcessor';
-import { NodeRequestProcessor } from './logic/request_processing/NodeRequestProcessor';
-import { EdgeRequestProcessor } from './logic/request_processing/EdgeRequestProcessor';
+import { init_processors } from './logic/request_processing/_init';
+import { fix_initial_node } from './tests/fix_first_node';
 
-ProcessorRepository.getInstance()
-    .register_processor(new NodeRequestProcessor())
-    .register_processor(new EdgeRequestProcessor());
+init_processors();
+// await fix_initial_node();
 
 ReactDOM.render(
     <React.StrictMode>
@@ -22,3 +20,5 @@ ReactDOM.render(
     </React.StrictMode>,
     document.getElementById('root') as HTMLElement,
 );
+
+

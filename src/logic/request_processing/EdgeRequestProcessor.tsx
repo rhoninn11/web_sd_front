@@ -1,4 +1,3 @@
-import { ServerNode } from "../../types/01_node_t";
 import { serverRequest } from "../../types/02_serv_t";
 import { ServerEdge } from "../../types/04_edge_t";
 import { RequestProcessor, FinishCB } from "./RequestProcessor";
@@ -23,3 +22,5 @@ export class EdgeRequestProcessor extends RequestProcessor<ServerEdge> {
             on_finish(server_node);
     }
 }
+
+

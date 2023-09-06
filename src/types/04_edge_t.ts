@@ -1,15 +1,5 @@
 import { FlowOps } from "./00_flow_t";
 
-export class DBEdge {
-    db_id: number = -1;
-    id: string = '';
-    serv_id: string = '';
-
-    source: string = '';
-    target: string = '';
-}
-
-
 export interface FlowEdge {
     id: string;
     
@@ -19,6 +9,16 @@ export interface FlowEdge {
     target: string;
 
     style: EdgeStyle;
+    type: string;
+}
+
+export class DBEdge {
+    db_id: number = -1;
+    id: string = '';
+    serv_id: string = '';
+
+    source: string = '';
+    target: string = '';
 }
 
 enum EDGE_COLOR {

@@ -26,12 +26,19 @@ import { ClientServerBridge } from '../logic/ClientServerBridge';
 import { moveCB } from '../tests/canvas_move_test';
 
 import { MoveObserver } from '../tests/canvas_move_test';
-import { PromptRealatedData } from '../types/02_serv_t';
-import { FlowNode, ServerNode } from '../types/01_node_t';
-import { EdgeStyle, FlowEdge, ServerEdge } from '../types/04_edge_t';
+import { PromptRealatedData, syncOps, syncSignature } from '../types/02_serv_t';
+import { DBNode, FlowNode, ServerNode } from '../types/01_node_t';
+import { DBEdge, EdgeStyle, FlowEdge, ServerEdge } from '../types/04_edge_t';
+import { add, set } from 'lodash';
+import { useServerContext } from './SocketProvider';
+import { send_client_data_to_serveer } from '../tests/sync_server_w_client_data';
 
 const nodeTypes = {
 	prompt: PromptNode,
+}
+
+const edgeTypes = {
+	prompt: PromptEdge,
 }
 
 const fitViewOptions = {
@@ -52,6 +59,8 @@ const AddNodeOnEdgeDrop = () => {
 	const [nodeNum, setNodeNum] = useState(0);
 	const [edgeNum, setEdgeNum] = useState(0);
 	const { project } = useReactFlow();
+	const [allowCreate, setAllowCreate] = useState(false);
+	const { isAuthenticated } = useServerContext();
 
 
 	const { setCenter, getZoom } = useReactFlow();
@@ -93,52 +102,53 @@ const AddNodeOnEdgeDrop = () => {
 		editDBNode(db_node.db_id, db_node)
 	}, [])
 
+	let add_node = async (db_node: DBNode, cb: () => void | undefined) => {
+		console.log('+++ new node created: ', db_node.serv_id)
+		let _flow_node = node_db2flow(db_node);
+		setNodes((nds) => nds.concat(_flow_node));
+		setNodeNum(nodeNum + 1);
+		await addDBNode(db_node);
+		if (cb) cb();
+	}
+
+	let add_edge = async (db_edge: DBEdge, cb: () => void | undefined) => {
+		console.log('+++ new edge created: ', db_edge.serv_id)
+		let _flow_edge = edge_db2flow(db_edge);
+		setEdges((eds) => eds.concat(_flow_edge));
+		setEdgeNum(edgeNum + 1);
+		await addDBEdge(db_edge);
+		if (cb) cb();
+	}
+
+
 	let ask_serv_to_create_node = (flow_node: FlowNode) => {
 		return new Promise<void>((resolve, reject) => {
-			let on_serv_accept = async (serv_node: ServerNode) => {
-
-				let _flow_node = node_db2flow(serv_node.db_node);
-				setNodes((nds) => nds.concat(_flow_node));
-				setNodeNum(nodeNum + 1);
-				await addDBNode(serv_node.db_node);
-				resolve();
-			}
-			
 			let db_node = node_flow2db(flow_node)
 			ClientServerBridge.getInstance()
-				.send_node(db_node, on_serv_accept);
+				.send_node(db_node, (serv_node) => add_node(serv_node.db_node, () => resolve()));
 		});
 
 	}
 
 	let ask_serv_to_create_edge = (flow_edge: FlowEdge) => {
-
 		return new Promise<void>((resolve, reject) => {
-			let on_serv_accept = async (serv_edge: ServerEdge) => {
-				
-				let _flow_edge = edge_db2flow(serv_edge.db_edge);
-				setEdges((eds) => eds.concat(_flow_edge));
-				setEdgeNum(edgeNum + 1);
-				await addDBEdge(serv_edge.db_edge);
-				resolve();
-			}
-			
 			let db_edge = edge_flow2db(flow_edge)
 			ClientServerBridge.getInstance()
-				.send_edge(db_edge, on_serv_accept);
+				.send_edge(db_edge, (serv_edge) => add_edge(serv_edge.db_edge, () => resolve()));
 		});
 
 	}
 
 	const create_new_node = async (event: any, div: HTMLDivElement, sourceNodeData: NodeTracker) => {
 
-		console.log('+++ 03 create_new_node')
+		setAllowCreate(false);
 		let prompt_data = new PromptRealatedData()
 			.clone(sourceNodeData.data_prompt, false)
 
 		const { top, left } = div.getBoundingClientRect();
 		const xy_pos = { x: event.clientX - left - 75, y: event.clientY - top }
 		let node_db_id = nodeNum;
+
 		let flow_node: FlowNode = {
 			type: 'prompt',
 			id: node_db_id.toString(),
@@ -153,6 +163,7 @@ const AddNodeOnEdgeDrop = () => {
 
 		const flow_db_id = edgeNum;
 		let flow_edge: FlowEdge = {
+			type: 'prompt',
 			id: flow_db_id.toString(),
 			db_id: flow_db_id,
 			serv_id: '',
@@ -163,18 +174,107 @@ const AddNodeOnEdgeDrop = () => {
 
 		ask_serv_to_create_node(flow_node)
 			.then(() => ask_serv_to_create_edge(flow_edge))
+			.then(() => setAllowCreate(true))
 	}
 
 	const place_node = (event: any) => {
 		const targetIsPane = event.target.classList.contains('react-flow__pane');
 
-		if (targetIsPane)
+		if (targetIsPane && allowCreate)
 			if (reactFlowWrapper && reactFlowWrapper.current)
 				create_new_node(event, reactFlowWrapper.current, nodeConnectSource.current);
 	}
 
-	const onConnectEnd = useCallback(place_node, [project, nodeNum, edgeNum]);
+	const onConnectEnd = useCallback(place_node, [project, nodeNum, edgeNum, allowCreate]);
 
+
+	const sync_client_nodes_with_server = (node_id_arr: string[]) => {
+		let initial = new Promise<void>((resolve, reject) => resolve());
+
+		node_id_arr.forEach((node_id) => {
+			initial = initial.then(() => {
+				console.log('+++ 02 invest', node_id)
+				return new Promise<void>((resolve, reject) => {
+					let sync_data_in = new syncSignature()
+					sync_data_in.sync_op = syncOps.TRANSFER;
+					sync_data_in.set_ids([node_id], []);
+
+					ClientServerBridge.getInstance()
+						.sync_with_server(sync_data_in, (sync_data_out) => {
+							console.log('+++ 03 invest', sync_data_out)
+							if (sync_data_out.sync_op == syncOps.TRANSFER){
+								if (sync_data_out.node_data_arr.length > 0){
+									add_node(sync_data_out.node_data_arr[0], () => resolve())
+								}
+							}
+						});
+				});
+			});
+		});
+
+		return initial;
+	}
+
+	const sync_client_edges_with_server = (edge_id_arr: string[]) => {
+		let initial = new Promise<void>((resolve, reject) => resolve());
+
+		edge_id_arr.forEach((edge_id) => {
+			initial = initial.then(() => {
+				return new Promise<void>((resolve, reject) => {
+					let sync_data_in = new syncSignature()
+					sync_data_in.sync_op = syncOps.TRANSFER;
+					sync_data_in.set_ids([], [edge_id]);
+
+					ClientServerBridge.getInstance()
+						.sync_with_server(sync_data_in, (sync_data_out) => {
+							if (sync_data_out.sync_op == syncOps.TRANSFER)
+								if (sync_data_out.edge_data_arr.length > 0){
+									add_edge(sync_data_out.edge_data_arr[0], () => resolve());
+								}
+						});
+				});
+			});
+		});
+
+		return initial;
+	}
+
+	const sync_client_with_server = (s_sygn: syncSignature) => {
+		let { node_id_arr, edge_id_arr } = s_sygn;
+		sync_client_nodes_with_server(node_id_arr)
+			.then(() => sync_client_edges_with_server(edge_id_arr))
+			.then(() => setAllowCreate(true))
+	}
+
+
+
+	const initialServerSync = (local_data: { nodes: DBNode[], edges: DBEdge[] }) => {
+
+		if (ClientServerBridge.getInstance().isAuthenticated()) {
+			// send_client_data_to_serveer(local_data.nodes, local_data.edges)
+			_initialServerSync(local_data);
+		} else {
+			console.log('+++ initialServerSync: waiting for server to authenticate')
+			setTimeout(() => initialServerSync(local_data), 1000);
+		}
+	}
+
+	const _initialServerSync = (local_data: { nodes: DBNode[], edges: DBEdge[] }) => {
+		let sync_data_in = new syncSignature()
+		sync_data_in.sync_op = syncOps.INFO;
+		let { nodes, edges } = local_data;
+		sync_data_in.fill_ids(nodes, edges);
+
+
+		console.log("+++  00 invest", sync_data_in)
+		ClientServerBridge.getInstance()
+			.sync_with_server(sync_data_in, (sync_data_out) => {
+				console.log("+++  01 invest", sync_data_out)
+				if (sync_data_out.sync_op == syncOps.INFO)
+					sync_client_with_server(sync_data_out);
+			});
+
+	}
 
 
 	const move_obs = MoveObserver.getInstance();
@@ -183,6 +283,8 @@ const AddNodeOnEdgeDrop = () => {
 			let db_nodes = await getAllDBNodes()
 			let db_edges = await getAllDBEdges()
 
+			// sync_server(db_nodes, db_edges)
+
 			let flow_nodes = db_nodes.map(node_db2flow)
 			let flow_edges = db_edges.map(edge_db2flow)
 
@@ -190,11 +292,16 @@ const AddNodeOnEdgeDrop = () => {
 			setEdges(flow_edges);
 			setNodeNum(flow_nodes.length);
 			setEdgeNum(flow_edges.length);
-			console.log('+++ 01 ', flow_nodes.length, "  ", flow_edges.length)
+
+			return {
+				nodes: db_nodes,
+				edges: db_edges,
+			}
 		};
 
 		move_obs.setCb(setCenter_test);
-		fetchData();
+		fetchData()
+			.then(initialServerSync);
 	}, []);
 
 
@@ -216,6 +323,7 @@ const AddNodeOnEdgeDrop = () => {
 				fitView
 				fitViewOptions={fitViewOptions}
 				nodeTypes={nodeTypes}
+				// edgeTypes={edgeTypes}
 				onMoveStart={move_obs.onMoveStart}
 				onMove={move_obs.onMove}
 				onMoveEnd={move_obs.onMoveEnd}

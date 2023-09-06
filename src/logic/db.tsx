@@ -42,7 +42,7 @@ export let initDB = async () => {
                 samples: 1
             }
 
-            addDBNode(initial_node)
+            // addDBNode(initial_node)
         },
     });
     return db;

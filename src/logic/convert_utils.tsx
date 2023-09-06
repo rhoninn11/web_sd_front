@@ -48,6 +48,7 @@ export const edge_db2flow = (db_edge: DBEdge): FlowEdge => {
         source: db_edge.source,
         target: db_edge.target,
         style: new EdgeStyle(),
+        type: 'prompt'
     }
     return flow_edge;
 }

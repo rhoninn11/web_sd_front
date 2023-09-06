@@ -18,6 +18,8 @@ export const ServerContextProvider: React.FC = ({ children }) => {
 		setBridge(client);
 	}, []);
 
+	console.log('+++ render server context', isAuthenticated);
+
 	return (
 		<ServerContext.Provider value={{isAuthenticated}}>
 			{children}

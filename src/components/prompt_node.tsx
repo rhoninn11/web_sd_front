@@ -1,16 +1,17 @@
-import React, { memo, useEffect, useState } from 'react';
-
-import { Handle, NodeProps, Position, useReactFlow } from 'reactflow';
 import styles from './prompt_node.module.scss';
+import React, { memo, useEffect, useState } from 'react';
+import { Handle, NodeProps, Position, useReactFlow } from 'reactflow';
+
 import { Button, Intent, ProgressBar} from '@blueprintjs/core';
 import { useServerContext } from './SocketProvider';
 import { ClientServerBridge } from '../logic/ClientServerBridge';
 import { PromptOverlay } from './prompt_overlay';
-import { cloneDeep, get } from 'lodash';
+import { cloneDeep } from 'lodash';
 
-import { img64, txt2img_config, PromptRealatedData } from '../types/types_serv_comm';
+import { NodeData } from '../types/01_node_t';
+import { txt2img_config } from '../types/03_sd_t';
+
 import { editDBNode, getDBNode } from '../logic/db';
-import { NodeData } from '../types/types_flow';
 import { MenuTest } from './menu_test';
 
 
@@ -27,7 +28,7 @@ const _PromptNode = ({ data }: NodeProps<NodeData>) => {
 	const [img64data, setImg64data] = useState('');
 	const [progress, setProgress] = useState(0.0);
 
-	const set_hl_prompt = (t2i_cfg:txt2img_config ) => {
+	const set_hl_prompt = (t2i_cfg: txt2img_config) => {
 		prompt_data.propmt_cfg = t2i_cfg;
 	}
 	const set_hl_img = (img_coded: string) => {

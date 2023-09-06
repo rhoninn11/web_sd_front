@@ -10,15 +10,17 @@ import { DBNode, FlowNode, ServerNode } from '../types/01_node_t';
 import { FlowOps } from '../types/00_flow_t';
 import { DBEdge, ServerEdge } from '../types/04_edge_t';
 import { img64, txt2img, txt2img_config } from '../types/03_sd_t';
-import { serverRequest, authData, progress } from '../types/02_serv_t';
+import { serverRequest, authData, progress, syncSignature } from '../types/02_serv_t';
 
 const serverPort = 8700;
 
 export class ClientServerBridge {
-
+	
+	private auth_try_num: number = 10;
 	private static instance: ClientServerBridge;
 	private req_proc: ProcessorRepository;
     private client: W3CWebSocket | null = null;
+	private auth: boolean = false;
 	
 	private constructor() {
 		this.req_proc = ProcessorRepository.getInstance();
@@ -51,22 +53,31 @@ export class ClientServerBridge {
 			this.client.send(json_string);
 		}
 	}
+
+	private _handleAuth (data: string) {
+		let authData: authData = JSON.parse(data);
+		this._setIsAuthenticated(authData.auth);
+	}
 	
 // internals
     private _askForAuth() {
-		let authData: authData = {
-			password: 'pulsary55.',
-			auth: false,
-			user_id: '',
-
+		let auth = new authData();
+		// random int from 48 to 55
+		let int_value = Math.floor(Math.random() * (55 - 48 + 1) + 48);
+		let password = 'pulsary' + int_value + '.';
+		auth.password = password 
+		console.log('+++ try pass', password);
+		
+		let on_finish = (authData: authData) => {
+			this._setIsAuthenticated(authData.auth);
+			if (!authData.auth && this.auth_try_num > 0){
+				this.auth_try_num--;
+				setTimeout(() => this._askForAuth(), 100);
+			}
 		}
-
-		let test_obj: serverRequest = {
-			type: 'auth',
-			data: JSON.stringify(authData)
-		}
-
-		this.sendRequest(test_obj)
+	
+		this.req_proc.get_processor('auth')
+			?.to_server(auth, on_finish)
 	}
 
     private _handleServerMessage = (message: string) => {
@@ -75,10 +86,6 @@ export class ClientServerBridge {
 	}
 
     private _handleServerRequest (req: serverRequest) {
-		if (req.type === 'auth') {
-			this._handleAuth(req.data)
-			return;
-		}
 		if (req.type === 'txt2img') {
 			this._handleTxt2img(req.data)
 			return;
@@ -87,16 +94,12 @@ export class ClientServerBridge {
 			this._handleProgress(req.data)
 			return;
 		}
-		console.log('+++ handle server request');
 
 		this.req_proc.get_processor(req.type)
 		?.from_server(req);
 	}
 
-	private _handleAuth (data: string) {
-		let authData: authData = JSON.parse(data);
-		this._setIsAuthenticated(authData.auth);
-	}
+	
 
 	private async _handleTxt2img (data: string){
 		let txt2imgData: txt2img = JSON.parse(data);
@@ -130,15 +133,23 @@ export class ClientServerBridge {
 	}
 
 // to communicate with react
-    private isAuthenticatedSetter: (suth: boolean) => void = () => {};
+	public isAuthenticated = () => { 
+		return this.auth; 
+	};
+
+	private isAuthenticatedSetter: (suth: boolean) => void = () => {};
     
     public setAuthenticatedSetter = (setter: (suth: boolean) => void) => {
-        this.isAuthenticatedSetter = setter;
+		this.isAuthenticatedSetter = setter;
     }
-
+	
     private _setIsAuthenticated = (isAuthenticated: boolean) => {
+		console.log('+++ set is authenticated ', isAuthenticated);
+		this.auth = isAuthenticated;
         this.isAuthenticatedSetter(isAuthenticated);
     }
+
+
 
    
 // public methods
@@ -174,6 +185,15 @@ export class ClientServerBridge {
 			?.to_server(server_node, on_finish)
 	}
 
+	public sync_node(db_node: DBNode, on_finish: (serv_node: ServerNode) => void) {
+		let server_node = new ServerNode();
+		server_node.node_op = FlowOps.CLIENT_SYNC;
+		server_node.db_node = db_node;
+		console.log('+++ sync_node', server_node);
+		this.req_proc.get_processor('serverNode')
+			?.to_server(server_node, on_finish)
+	}
+
 	public delete_node(flow_node: FlowNode, on_finish: (serv_node: ServerNode) => void) {
 		let server_node = new ServerNode();
 		server_node.node_op = FlowOps.CREATE;
@@ -191,6 +211,20 @@ export class ClientServerBridge {
 			?.to_server(server_edge, on_finish)
 	}
 
+	public sync_edge(db_edge: DBEdge, on_finish: (serv_edge: ServerEdge) => void) {
+		let server_edge = new ServerEdge();
+		server_edge.node_op = FlowOps.CLIENT_SYNC;
+		console.log('+++ sync_edge', server_edge);
+		server_edge.db_edge = db_edge
+	
+		this.req_proc.get_processor('serverEdge')
+			?.to_server(server_edge, on_finish)
+	}
+
+	public sync_with_server(syncSignature: syncSignature, on_finish: (sync_syg: syncSignature) => void) {
+		this.req_proc.get_processor('sync')
+			?.to_server(syncSignature, on_finish)
+	}
 
 }
 

@@ -14,12 +14,10 @@ export class RequestProcessor<T> {
     }
 
     public match_type(type: string): boolean {
-        console.log('+++ match_type', this.type, type);
         return this.type === type;
     }
 
     public to_server(input: T, on_finish: FinishCB<T>) {
-        console.log('+++ to server basic');
     }
 
     public from_server(req: serverRequest) {
@@ -31,7 +29,6 @@ export class RequestProcessor<T> {
             type: this.type,
         }
 
-        console.log('+++ input_to_server', serv_req);
         ClientServerBridge.getInstance()
             .sendRequest(serv_req);
     }
@@ -59,7 +56,8 @@ export class ProcessorRepository {
 
     public get_processor(type: string): RequestProcessor<any> | undefined {
         let processor = this.processors.find(processor => processor.match_type(type));
-        console.log('+++ get_processor', processor);
+        // console.log('+++ get_processor', processor);
         return processor
     }
 }
+

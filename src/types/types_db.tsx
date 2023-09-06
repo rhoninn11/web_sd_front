@@ -8,3 +8,8 @@ export interface Generation {
     neg_prompt: string;
     b64_img: string;
 }
+
+export interface SDImage {
+    db_id: number;
+    serv_id: string;
+}

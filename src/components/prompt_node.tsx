@@ -2,62 +2,64 @@ import styles from './prompt_node.module.scss';
 import React, { memo, useEffect, useState } from 'react';
 import { Handle, NodeProps, Position, useReactFlow } from 'reactflow';
 
-import { Button, Intent, ProgressBar} from '@blueprintjs/core';
+import { Button, Intent, ProgressBar } from '@blueprintjs/core';
 import { useServerContext } from './SocketProvider';
 import { ClientServerBridge } from '../logic/ClientServerBridge';
 import { PromptOverlay } from './prompt_overlay';
-import { cloneDeep } from 'lodash';
+import { cloneDeep, set } from 'lodash';
 
-import { NodeData } from '../types/01_node_t';
-import { txt2img_config } from '../types/03_sd_t';
+import { NodeData, NodeConnData, PromptReference } from '../types/01_node_t';
+import { DBImg, img64, promptConfig } from '../types/03_sd_t';
 
-import { editDBNode, getDBNode } from '../logic/db';
+import { addDBImg, editDBNode, getDB, getDBImg, getDBNode } from '../logic/db';
 import { MenuTest } from './menu_test';
+import { UpdateNodeSync } from '../logic/UpdateNodeSync';
 
 
 
-const _PromptNode = ({ data }: NodeProps<NodeData>) => {
-	const {isAuthenticated} = useServerContext();
+const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
+	const { isAuthenticated } = useServerContext();
 
-	const prompt_data = data.data_prompt;
-	const [txt2img_config, setTxt2img_config] = useState(cloneDeep(prompt_data.propmt_cfg));
+
+	const [initPrompt, setInitPrompt] = useState(new promptConfig());
+	const [resultPrompt, setResultprompt] = useState(new promptConfig());
 
 	const [generated, setGenerated] = React.useState(false);
-    const [generating, setGenerating] = React.useState(false);
+	const [generating, setGenerating] = React.useState(false);
 	const [showOoverlay, setShowOverlay] = useState(false);
-	const [img64data, setImg64data] = useState('');
 	const [progress, setProgress] = useState(0.0);
 
-	const set_hl_prompt = (t2i_cfg: txt2img_config) => {
-		prompt_data.propmt_cfg = t2i_cfg;
-	}
-	const set_hl_img = (img_coded: string) => {
-		prompt_data.img_coded = img_coded;
+	const [initImg, setInitImg] = useState(new img64());
+	const [hasInitImg, setHasInitImg] = useState(false);
+	const [resultImg, setResultImg] = useState(new img64());
+	const [hasResultImg, setHasResultImg] = useState(false);
+
+
+	const result_img_save2db = async (web_img64: img64) => {
+		await addDBImg(new DBImg().from(web_img64))
+		setHasResultImg(true);
+		setResultImg(web_img64);
+
+		let db_id = parseInt(data.node_data.id);
+		UpdateNodeSync.getInstance().update_result_img(db_id, web_img64.id);
 	}
 
-	const db_img = async (coded_img64: string) => {
-		let db_node = await getDBNode(data.db_id)
-		if(db_node){
-			db_node.img = coded_img64;
-			await editDBNode(data.db_id, db_node)
-			console.log('db_img')
-		}
+	const result_prompt_save2db = async (prompt: promptConfig) => {
+		let db_id = parseInt(data.node_data.id);
+		UpdateNodeSync.getInstance().update_result_prompt(db_id, prompt);
 	}
 
-    let startGeneration = (t2i_cfg:txt2img_config ) => {
-		setTxt2img_config(t2i_cfg);
-		set_hl_prompt(t2i_cfg);
-        setGenerating(true);
+	let startGeneration = (prompt: promptConfig) => {
+		setResultprompt(prompt);
+		result_prompt_save2db(prompt);
+		setGenerating(true);
 
-		
 		let onProgress = (progress: number) => {
 			setProgress(progress);
 		}
 
-		let onFinished = (coded_img64: string) => {
-			setImg64data(coded_img64);
-			set_hl_img(coded_img64)
-			db_img(coded_img64);
+		let onFinished = (web_img64: img64) => {
+			result_img_save2db(web_img64);
 
 			setGenerating(false);
 			setGenerated(true);
@@ -66,33 +68,65 @@ const _PromptNode = ({ data }: NodeProps<NodeData>) => {
 		}
 
 		let bridge = ClientServerBridge.getInstance();
-		bridge.send_txt2_img(t2i_cfg)
+		bridge.send_txt2_img(prompt)
 		bridge.onText2imgResult.push(onFinished);
 		bridge.onText2imgProgress.push(onProgress);
-    }
-
-    let ShowPromptOverlay = () => {
-		setShowOverlay(true);
-    }
-
-	const ShowEditorForFirstTime = () => {
-		const render_data = data.data_render;
-		setShowOverlay(render_data.fresh);
-		render_data.fresh = false;
 	}
 
+	let ShowPromptOverlay = () => {
+		setShowOverlay(true);
+	}
+
+	const tryFetchResultData = async (prompt_ref: PromptReference) => {
+		let result_img_id = prompt_ref.prompt_img_id;
+
+		setResultprompt(prompt_ref.prompt);
+		if (result_img_id == -1)
+			return;
+
+		await getDBImg(result_img_id).then((img) => {
+			setResultImg(img.img);
+			setHasResultImg(true);
+			setGenerated(true);
+		});
+
+		return;
+	}
+
+	const tryFetchInitialData = async () => {
+		let init_node_id = data.node_data.initial_node_id;
+		if (init_node_id == -1){
+			let sample_prompt = new promptConfig();
+			sample_prompt.prompt = "Cozy italian vilage";
+			sample_prompt.prompt_negative = "Boring sky";
+			setInitPrompt(sample_prompt);
+			return;
+		}
+
+		await getDBNode(init_node_id)
+			.then((db_node) => {
+				let img_id = db_node.result_data.prompt_img_id;
+				setInitPrompt(db_node.result_data.prompt);
+				if (img_id == -1)
+					return;
+
+				getDBImg(img_id).then((img) => {
+					setInitImg(img.img);
+					setHasInitImg(true);
+				});
+			});
+
+		return;
+	}
 
 	useEffect(() => {
 		const fetchData = async () => {
-			let db_node = await getDBNode(data.db_id)
-			if(db_node && db_node.img.length > 0){
-				setGenerated(true);
-				setImg64data(db_node.img);
-				set_hl_img(db_node.img)
-			}
+			let prompt_ref = data.node_data.result_data;
+			await tryFetchResultData(prompt_ref)
+			
+			await tryFetchInitialData()
 		};
-		
-		ShowEditorForFirstTime();
+
 		fetchData();
 	}, []);
 
@@ -100,31 +134,32 @@ const _PromptNode = ({ data }: NodeProps<NodeData>) => {
 		<Button onClick={ShowPromptOverlay} disabled={generating} rightIcon="edit" intent={Intent.PRIMARY}>
 			Describe
 		</Button>
-		:null
+		: null
 
-	let prompt_overlay = showOoverlay ? 
-		<PromptOverlay 
+	let prompt_overlay = showOoverlay ?
+		<PromptOverlay
 			onClose={() => setShowOverlay(false)}
 			onGenerate={startGeneration}
-			title={'Txt2img options'} 
-			init_cfg={txt2img_config}/> 
+			title={'Txt2img options'}
+			init_cfg={initPrompt}
+			img_cfg={initImg.img64} />
 		: null;
 
 	let progress_bar = generating ?
-	 	<ProgressBar value={progress} />
+		<ProgressBar value={progress} />
 		: null;
-	let generated_img = generated ? 
+	let generated_img = generated ?
 		<img className={styles.limited_size_img}
-			src={img64data} /> 
+			src={resultImg.img64} />
 		: null;
 
 	let display_content = <div>
-			<div> {isAuthenticated ? "authenticated" : "not authenticcated"}</div>
-            {oberlay_btn}
-			{prompt_overlay}
-			{generated_img}
-			{progress_bar}
-        </div>
+		<div> {isAuthenticated ? "authenticated" : "not authenticcated"}</div>
+		{oberlay_btn}
+		{prompt_overlay}
+		{generated_img}
+		{progress_bar}
+	</div>
 
 
 
@@ -147,7 +182,7 @@ const _PromptNode = ({ data }: NodeProps<NodeData>) => {
 			<div className={styles.nice_box}>
 				Stable diffusion XL txt2img
 				{display_content}
-				<MenuTest test={() => console.log("test")}/>
+				<MenuTest refresh={async() => await tryFetchInitialData()} />
 			</div>
 			<Handle
 				type="source"

@@ -9,7 +9,7 @@ import { ProcessorRepository } from './request_processing/RequestProcessor';
 import { DBNode, FlowNode, ServerNode } from '../types/01_node_t';
 import { FlowOps } from '../types/00_flow_t';
 import { DBEdge, ServerEdge } from '../types/04_edge_t';
-import { img64, txt2img, txt2img_config } from '../types/03_sd_t';
+import { img64, promptConfig, txt2img } from '../types/03_sd_t';
 import { serverRequest, authData, progress, syncSignature } from '../types/02_serv_t';
 
 const serverPort = 8700;
@@ -113,8 +113,9 @@ export class ClientServerBridge {
 				let img = txt2imgData.txt2img.bulk.img
 				let prefix = `data:image/${img.mode};base64,`
 				let coded_img = prefix + img.img64;
+				img.img64 = coded_img;
 
-				onFinished(coded_img);
+				onFinished(img);
 
 				// save to db
 			}
@@ -153,10 +154,10 @@ export class ClientServerBridge {
 
    
 // public methods
-	public onText2imgResult: ((data:any)=> void)[] = []
+	public onText2imgResult: ((data:img64)=> void)[] = []
 	public onText2imgProgress: ((data:any)=> void)[] = []
 
-    public send_txt2_img(cfg: txt2img_config){
+    public send_txt2_img(cfg: promptConfig){
 		if (!this.client)
 			return;
 

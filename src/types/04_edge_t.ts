@@ -2,9 +2,7 @@ import { FlowOps } from "./00_flow_t";
 
 export interface FlowEdge {
     id: string;
-    
-    db_id: number;
-    serv_id: string;
+
     source: string;
     target: string;
 
@@ -13,9 +11,7 @@ export interface FlowEdge {
 }
 
 export class DBEdge {
-    db_id: number = -1;
-    id: string = '';
-    serv_id: string = '';
+    id: number = -1;
 
     source: string = '';
     target: string = '';

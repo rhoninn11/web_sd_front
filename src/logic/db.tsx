@@ -1,16 +1,18 @@
 import { DBSchema, openDB } from "idb";
-import { Generation} from "../types/types_db";
 import { DBNode } from "../types/01_node_t";
 import { DBEdge } from "../types/04_edge_t";
+import { DBImg } from "../types/03_sd_t";
 
-const GEN_FIELD = "gen";
+const IMG_FIELD = "img";
 const NODE_FIELD = "node";
 const EDGE_FIELD = "edge";
 
+
+
 interface Wb_Sd_Db extends DBSchema {
-    gen: {
+    img: {
         key: number;
-        value: Generation;
+        value: DBImg;
     };
     node: {
         key: number;
@@ -25,24 +27,9 @@ interface Wb_Sd_Db extends DBSchema {
 export let initDB = async () => {
     let db = await openDB<Wb_Sd_Db>('web_sd_db', 1, {
         upgrade(db) {
-            db.createObjectStore(GEN_FIELD, { keyPath: 'db_id' });
-            db.createObjectStore(NODE_FIELD, { keyPath: 'db_id' });
-            db.createObjectStore(EDGE_FIELD, { keyPath: 'db_id' });
-
-            let initial_node = new DBNode();
-            initial_node.db_id = 0;
-            initial_node.id = "0";
-            initial_node.type = "prompt";
-            initial_node.position = { x: 0, y: 50 };
-            initial_node.img = "";
-            initial_node.prompt = {
-                prompt: "Italian vialge",
-                prompt_negative: "borign sky",
-                seed: 0,
-                samples: 1
-            }
-
-            // addDBNode(initial_node)
+            db.createObjectStore(IMG_FIELD, { keyPath: 'id' });
+            db.createObjectStore(NODE_FIELD, { keyPath: 'id' });
+            db.createObjectStore(EDGE_FIELD, { keyPath: 'id' });
         },
     });
     return db;
@@ -67,7 +54,7 @@ export let getAllDBNodes = async () => {
 
 export let getDBNode = async (id: number) => {
     let job = _get_store(NODE_FIELD)
-        .then((store) => store.get(id))
+        .then((store) => store.get(id) as Promise<DBNode>)
 
     return await job;
 }
@@ -87,8 +74,6 @@ export let editDBNode = async (id: number, updated_value: DBNode) => {
     }
 }
 
-
-
 export let getAllDBEdges = async () => {
     const db = await initDB();
     const all_edges: DBEdge[] = await db.getAll(EDGE_FIELD);
@@ -97,7 +82,7 @@ export let getAllDBEdges = async () => {
 
 export let getDBEdge = async (id: number) => {
     let job = _get_store(EDGE_FIELD)
-        .then((store) => store.get(id))
+        .then((store) => store.get(id) as Promise<DBEdge>)
     return await job
 }
 
@@ -113,4 +98,17 @@ export let editDBEdge = async (id: number, updated_value: DBEdge) => {
     if (edge) {
         await store.put(updated_value);
     }
+}
+
+export let getDBImg = async (id: number) => {
+    let job = _get_store(IMG_FIELD)
+        .then((store) => store.get(id) as Promise<DBImg>)
+
+    return await job;
+}
+
+export let addDBImg = async (new_node: DBImg) => {
+    let job = _get_store(IMG_FIELD)
+        .then((store) => store.add(new_node))
+    return await job
 }

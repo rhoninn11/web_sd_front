@@ -26,12 +26,12 @@ import { ClientServerBridge } from '../logic/ClientServerBridge';
 import { moveCB } from '../tests/canvas_move_test';
 
 import { MoveObserver } from '../tests/canvas_move_test';
-import { PromptRealatedData, syncOps, syncSignature } from '../types/02_serv_t';
-import { DBNode, FlowNode, ServerNode } from '../types/01_node_t';
+import { syncOps, syncSignature } from '../types/02_serv_t';
+import { DBNode, FlowNode, PromptReference, ServerNode } from '../types/01_node_t';
 import { DBEdge, EdgeStyle, FlowEdge, ServerEdge } from '../types/04_edge_t';
-import { add, set } from 'lodash';
-import { useServerContext } from './SocketProvider';
 import { send_client_data_to_serveer } from '../tests/sync_server_w_client_data';
+import _, { flow } from 'lodash';
+import { UpdateNodeSync } from '../logic/UpdateNodeSync';
 
 const nodeTypes = {
 	prompt: PromptNode,
@@ -46,13 +46,13 @@ const fitViewOptions = {
 };
 
 interface NodeTracker {
-	id: string;
-	data_prompt: PromptRealatedData;
+	node_id: string;
+	prompt_ref: PromptReference;
 }
 
 const AddNodeOnEdgeDrop = () => {
 	const reactFlowWrapper = useRef<HTMLDivElement>(null);
-	const nodeConnectSource = useRef<NodeTracker>({ id: '', data_prompt: new PromptRealatedData() });
+	const nodeConnectSource = useRef<NodeTracker>({ node_id: '', prompt_ref: new PromptReference() });
 	// const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
 	const [nodes, setNodes, onNodesChange] = useNodesState([]);
 	const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -60,59 +60,44 @@ const AddNodeOnEdgeDrop = () => {
 	const [edgeNum, setEdgeNum] = useState(0);
 	const { project } = useReactFlow();
 	const [allowCreate, setAllowCreate] = useState(false);
-	const { isAuthenticated } = useServerContext();
 
-
-	const { setCenter, getZoom } = useReactFlow();
-
-	const setCenter_test: moveCB = (x, y, duration) => {
-		const _x = x;
-		const _y = y;
-		const zoom = getZoom();
-
-		//   console.log('+++ setCenter_test' , _x, "  ", _y, "  ", duration)
-
-		// setCenter(0, 1000, { zoom, duration });
-	};
 
 	const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), []);
-
 
 	const get_node_hl_data = (id: string) => {
 		let this_node = nodes.find((node) => node.id === id)
 		if (this_node) {
 			let legit_node = this_node as FlowNode
-			return legit_node.data.data_prompt;
+			return legit_node.data.node_data.result_data;
 		}
-		return new PromptRealatedData();
+		return new PromptReference()
 	}
 
 	const onConnectStart = useCallback((eventInfo, nodeInfo) => {
 		let nodeId = nodeInfo?.nodeId;
-		nodeConnectSource.current.id = nodeId;
-		nodeConnectSource.current.data_prompt = get_node_hl_data(nodeId);
+		nodeConnectSource.current.node_id = nodeId;
+		nodeConnectSource.current.prompt_ref = get_node_hl_data(nodeId);
 
 	}, [nodes]);
 
 	const onNodeDrag = useCallback((_0, node, _1) => {
 		let flow_node: FlowNode = node;
-		let db_node = node_flow2db(flow_node)
-		console.log('+++ flow_node', flow_node)
-		console.log('+++ db_node', db_node)
-		editDBNode(db_node.db_id, db_node)
+		let id: number = parseInt(flow_node.id);
+		let position = flow_node.position;
+		UpdateNodeSync.getInstance().update_position(id, position);
+		
 	}, [])
 
 	let add_node = async (db_node: DBNode, cb: () => void | undefined) => {
-		console.log('+++ new node created: ', db_node.serv_id)
 		let _flow_node = node_db2flow(db_node);
 		setNodes((nds) => nds.concat(_flow_node));
 		setNodeNum(nodeNum + 1);
+		console.log('+++ add_node: db_node', db_node)
 		await addDBNode(db_node);
 		if (cb) cb();
 	}
 
 	let add_edge = async (db_edge: DBEdge, cb: () => void | undefined) => {
-		console.log('+++ new edge created: ', db_edge.serv_id)
 		let _flow_edge = edge_db2flow(db_edge);
 		setEdges((eds) => eds.concat(_flow_edge));
 		setEdgeNum(edgeNum + 1);
@@ -121,59 +106,63 @@ const AddNodeOnEdgeDrop = () => {
 	}
 
 
-	let ask_serv_to_create_node = (flow_node: FlowNode) => {
-		return new Promise<void>((resolve, reject) => {
-			let db_node = node_flow2db(flow_node)
+	let ask_serv_to_create_node = (db_node: DBNode) => {
+		return new Promise<DBNode>((resolve, reject) => {
 			ClientServerBridge.getInstance()
-				.send_node(db_node, (serv_node) => add_node(serv_node.db_node, () => resolve()));
+				.send_node(db_node, (serv_node) => add_node(serv_node.db_node, () => resolve(serv_node.db_node)));
 		});
 
 	}
 
-	let ask_serv_to_create_edge = (flow_edge: FlowEdge) => {
-		return new Promise<void>((resolve, reject) => {
-			let db_edge = edge_flow2db(flow_edge)
+	let ask_serv_to_create_edge = (db_edge: DBEdge) => {
+		return new Promise<DBEdge>((resolve, reject) => {
 			ClientServerBridge.getInstance()
-				.send_edge(db_edge, (serv_edge) => add_edge(serv_edge.db_edge, () => resolve()));
+				.send_edge(db_edge, (serv_edge) => add_edge(serv_edge.db_edge, () => resolve(serv_edge.db_edge)));
 		});
 
 	}
 
-	const create_new_node = async (event: any, div: HTMLDivElement, sourceNodeData: NodeTracker) => {
+	let asign_target = (db_edge: DBEdge, db_node: DBNode) => {
+		return new Promise<DBEdge>((resolve, reject) => {
+			db_edge.target = db_node.id.toString();
+			resolve(db_edge);
+		});
+	}
+
+	const create_first_node = () => {
+		setAllowCreate(false);
+
+		const xy_pos = { x: 0, y: 0 }
+
+		let db_node = new DBNode();
+		db_node.position = project(xy_pos);
+
+		ask_serv_to_create_node(db_node)
+			.then(() => {
+				setAllowCreate(true)
+				console.log('!!! first node created !!!')
+			})
+	}
+
+	const create_next_node = async (event: any, div: HTMLDivElement, sourceNodeData: NodeTracker) => {
 
 		setAllowCreate(false);
-		let prompt_data = new PromptRealatedData()
-			.clone(sourceNodeData.data_prompt, false)
+		let prompt_data = sourceNodeData.prompt_ref
 
 		const { top, left } = div.getBoundingClientRect();
 		const xy_pos = { x: event.clientX - left - 75, y: event.clientY - top }
-		let node_db_id = nodeNum;
 
-		let flow_node: FlowNode = {
-			type: 'prompt',
-			id: node_db_id.toString(),
-			position: project(xy_pos),
-			data: {
-				db_id: node_db_id,
-				serv_id: '',
-				data_prompt: prompt_data,
-				data_render: { fresh: true },
-			},
-		};
+		let db_node = new DBNode();
+		db_node.position = project(xy_pos);
+		db_node.initial_node_id = parseInt(sourceNodeData.node_id);
 
-		const flow_db_id = edgeNum;
-		let flow_edge: FlowEdge = {
-			type: 'prompt',
-			id: flow_db_id.toString(),
-			db_id: flow_db_id,
-			serv_id: '',
-			source: nodeConnectSource.current.id,
-			target: node_db_id.toString(),
-			style: new EdgeStyle(),
-		};
 
-		ask_serv_to_create_node(flow_node)
-			.then(() => ask_serv_to_create_edge(flow_edge))
+		let lul = new DBEdge();
+		lul.source = nodeConnectSource.current.node_id;
+
+		ask_serv_to_create_node(db_node)
+			.then((serv_db_node) => asign_target(lul, serv_db_node))
+			.then((proccessed_db_edge) => ask_serv_to_create_edge(proccessed_db_edge))
 			.then(() => setAllowCreate(true))
 	}
 
@@ -182,32 +171,54 @@ const AddNodeOnEdgeDrop = () => {
 
 		if (targetIsPane && allowCreate)
 			if (reactFlowWrapper && reactFlowWrapper.current)
-				create_new_node(event, reactFlowWrapper.current, nodeConnectSource.current);
+				create_next_node(event, reactFlowWrapper.current, nodeConnectSource.current);
 	}
 
 	const onConnectEnd = useCallback(place_node, [project, nodeNum, edgeNum, allowCreate]);
 
+	const syncSignatureForSingleNode = (node_id: string) => {
+		let sync_data_in = new syncSignature()
+		sync_data_in.sync_op = syncOps.TRANSFER;
+		sync_data_in.set_ids([node_id], []);
+		return sync_data_in;
+	}
+
+	const syncSignatureForSingleEdge = (edge_id: string) => {
+		let sync_data_in = new syncSignature()
+		sync_data_in.sync_op = syncOps.TRANSFER;
+		sync_data_in.set_ids([], [edge_id]);
+		return sync_data_in;
+	}
+
+	const syncForNode = (sync_data_in: syncSignature, synced: () => void) => {
+		ClientServerBridge.getInstance()
+		.sync_with_server(sync_data_in, (sync_data_out) => {
+			if (sync_data_out.sync_op == syncOps.TRANSFER) {
+				if (sync_data_out.node_data_arr.length > 0) {
+					add_node(sync_data_out.node_data_arr[0], synced)
+				}
+			}
+		});
+	}
+	const syncForEdge = (sync_data_in: syncSignature, synced: () => void) => {
+		ClientServerBridge.getInstance()
+			.sync_with_server(sync_data_in, (sync_data_out) => {
+				if (sync_data_out.sync_op == syncOps.TRANSFER) {
+					if (sync_data_out.edge_data_arr.length > 0) {
+						add_edge(sync_data_out.edge_data_arr[0], synced);
+					}
+				}
+			});
+	}
 
 	const sync_client_nodes_with_server = (node_id_arr: string[]) => {
 		let initial = new Promise<void>((resolve, reject) => resolve());
 
 		node_id_arr.forEach((node_id) => {
 			initial = initial.then(() => {
-				console.log('+++ 02 invest', node_id)
 				return new Promise<void>((resolve, reject) => {
-					let sync_data_in = new syncSignature()
-					sync_data_in.sync_op = syncOps.TRANSFER;
-					sync_data_in.set_ids([node_id], []);
-
-					ClientServerBridge.getInstance()
-						.sync_with_server(sync_data_in, (sync_data_out) => {
-							console.log('+++ 03 invest', sync_data_out)
-							if (sync_data_out.sync_op == syncOps.TRANSFER){
-								if (sync_data_out.node_data_arr.length > 0){
-									add_node(sync_data_out.node_data_arr[0], () => resolve())
-								}
-							}
-						});
+					let sync_data_in = syncSignatureForSingleNode(node_id)
+					syncForNode(sync_data_in, () => resolve())
 				});
 			});
 		});
@@ -221,17 +232,8 @@ const AddNodeOnEdgeDrop = () => {
 		edge_id_arr.forEach((edge_id) => {
 			initial = initial.then(() => {
 				return new Promise<void>((resolve, reject) => {
-					let sync_data_in = new syncSignature()
-					sync_data_in.sync_op = syncOps.TRANSFER;
-					sync_data_in.set_ids([], [edge_id]);
-
-					ClientServerBridge.getInstance()
-						.sync_with_server(sync_data_in, (sync_data_out) => {
-							if (sync_data_out.sync_op == syncOps.TRANSFER)
-								if (sync_data_out.edge_data_arr.length > 0){
-									add_edge(sync_data_out.edge_data_arr[0], () => resolve());
-								}
-						});
+					let sync_data_in = syncSignatureForSingleEdge(edge_id)
+					syncForEdge(sync_data_in, () => resolve())
 				});
 			});
 		});
@@ -239,14 +241,30 @@ const AddNodeOnEdgeDrop = () => {
 		return initial;
 	}
 
-	const sync_client_with_server = (s_sygn: syncSignature) => {
+	const sync_client_with_server = (s_sygn: syncSignature, client_node_num: number) => {
 		let { node_id_arr, edge_id_arr } = s_sygn;
 		sync_client_nodes_with_server(node_id_arr)
 			.then(() => sync_client_edges_with_server(edge_id_arr))
 			.then(() => setAllowCreate(true))
+			.then(() => {
+				let total_node_num = node_id_arr.length + client_node_num;
+				if (total_node_num == 0)
+					create_first_node()
+			})
 	}
 
+	const _initialServerSync = (local_data: { nodes: DBNode[], edges: DBEdge[] }) => {
+		let sync_data_in = new syncSignature()
+		sync_data_in.sync_op = syncOps.INFO;
+		let { nodes, edges } = local_data;
+		sync_data_in.fill_ids(nodes, edges);
 
+		ClientServerBridge.getInstance()
+			.sync_with_server(sync_data_in, (sync_data_out) => {
+				if (sync_data_out.sync_op == syncOps.INFO)
+					sync_client_with_server(sync_data_out, nodes.length);
+			});
+	}
 
 	const initialServerSync = (local_data: { nodes: DBNode[], edges: DBEdge[] }) => {
 
@@ -258,24 +276,6 @@ const AddNodeOnEdgeDrop = () => {
 			setTimeout(() => initialServerSync(local_data), 1000);
 		}
 	}
-
-	const _initialServerSync = (local_data: { nodes: DBNode[], edges: DBEdge[] }) => {
-		let sync_data_in = new syncSignature()
-		sync_data_in.sync_op = syncOps.INFO;
-		let { nodes, edges } = local_data;
-		sync_data_in.fill_ids(nodes, edges);
-
-
-		console.log("+++  00 invest", sync_data_in)
-		ClientServerBridge.getInstance()
-			.sync_with_server(sync_data_in, (sync_data_out) => {
-				console.log("+++  01 invest", sync_data_out)
-				if (sync_data_out.sync_op == syncOps.INFO)
-					sync_client_with_server(sync_data_out);
-			});
-
-	}
-
 
 	const move_obs = MoveObserver.getInstance();
 	useEffect(() => {
@@ -299,14 +299,13 @@ const AddNodeOnEdgeDrop = () => {
 			}
 		};
 
-		move_obs.setCb(setCenter_test);
 		fetchData()
 			.then(initialServerSync);
 	}, []);
 
 
 	return (
-		<div className={styles.wrapper} ref={reactFlowWrapper}>
+		<div className={styles.full_screan_wrapper} ref={reactFlowWrapper}>
 			<MiniMap />
 			<Controls />
 			<Background />

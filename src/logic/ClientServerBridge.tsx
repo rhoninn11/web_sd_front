@@ -110,14 +110,8 @@ export class ClientServerBridge {
 			let onFinished = this.onText2imgResult.shift();
 
 			if (onFinished){
-				let img = txt2imgData.txt2img.bulk.img
-				let prefix = `data:image/${img.mode};base64,`
-				let coded_img = prefix + img.img64;
-				img.img64 = coded_img;
-
+				let img = txt2imgData.txt2img.bulk.img;
 				onFinished(img);
-
-				// save to db
 			}
 		}
 	}

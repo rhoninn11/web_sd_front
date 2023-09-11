@@ -49,35 +49,8 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 		UpdateNodeSync.getInstance().update_result_prompt(db_id, prompt);
 	}
 
-	let startGeneration = (prompt: promptConfig) => {
-		setResultprompt(prompt);
-		result_prompt_save2db(prompt);
-		setGenerating(true);
-
-		let onProgress = (progress: number) => {
-			setProgress(progress);
-		}
-
-		let onFinished = (web_img64: img64) => {
-			result_img_save2db(web_img64);
-
-			setGenerating(false);
-			setGenerated(true);
-			setProgress(0.0);
-
-		}
-
-		let bridge = ClientServerBridge.getInstance();
-		bridge.send_txt2_img(prompt)
-		bridge.onText2imgResult.push(onFinished);
-		bridge.onText2imgProgress.push(onProgress);
-	}
-
-	let ShowPromptOverlay = () => {
-		setShowOverlay(true);
-	}
-
 	const tryFetchResultData = async (prompt_ref: PromptReference) => {
+		console.log("+++ elo", prompt_ref)
 		let result_img_id = prompt_ref.prompt_img_id;
 
 		setResultprompt(prompt_ref.prompt);
@@ -95,7 +68,7 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 
 	const tryFetchInitialData = async () => {
 		let init_node_id = data.node_data.initial_node_id;
-		if (init_node_id == -1){
+		if (init_node_id == -1) {
 			let sample_prompt = new promptConfig();
 			sample_prompt.prompt = "Cozy italian vilage";
 			sample_prompt.prompt_negative = "Boring sky";
@@ -123,12 +96,16 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 		const fetchData = async () => {
 			let prompt_ref = data.node_data.result_data;
 			await tryFetchResultData(prompt_ref)
-			
+
 			await tryFetchInitialData()
 		};
 
 		fetchData();
 	}, []);
+
+	let ShowPromptOverlay = () => {
+		setShowOverlay(true);
+	}
 
 	let oberlay_btn = !generated ?
 		<Button onClick={ShowPromptOverlay} disabled={generating} rightIcon="edit" intent={Intent.PRIMARY}>
@@ -136,14 +113,42 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 		</Button>
 		: null
 
-	let prompt_overlay = showOoverlay ?
-		<PromptOverlay
-			onClose={() => setShowOverlay(false)}
-			onGenerate={startGeneration}
-			title={'Txt2img options'}
-			init_cfg={initPrompt}
-			img_cfg={initImg.img64} />
-		: null;
+
+	let startGeneration = (prompt: promptConfig) => {
+		setShowOverlay(false);
+		setResultprompt(prompt);
+		result_prompt_save2db(prompt);
+		setGenerating(true);
+
+		let onProgress = (progress: number) => {
+			setProgress(progress);
+		}
+
+		let onFinished = (web_img64: img64) => {
+			result_img_save2db(web_img64);
+
+			setGenerating(false);
+			setGenerated(true);
+			setProgress(0.0);
+
+		}
+
+		let bridge = ClientServerBridge.getInstance();
+		bridge.send_txt2_img(prompt)
+		bridge.onText2imgResult.push(onFinished);
+		bridge.onText2imgProgress.push(onProgress);
+	}
+
+
+	let prompt_overlay = showOoverlay ? <PromptOverlay
+		onClose={() => setShowOverlay(false)}
+		onGenerate={startGeneration}
+		title={'Txt2img options'}
+		init_cfg={initPrompt}
+		img_cfg={initImg.img64}
+		/>
+		: null
+
 
 	let progress_bar = generating ?
 		<ProgressBar value={progress} />
@@ -182,7 +187,7 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 			<div className={styles.nice_box}>
 				Stable diffusion XL txt2img
 				{display_content}
-				<MenuTest refresh={async() => await tryFetchInitialData()} />
+				<MenuTest refresh={async () => await tryFetchInitialData()} />
 			</div>
 			<Handle
 				type="source"

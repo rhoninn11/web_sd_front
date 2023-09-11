@@ -11,6 +11,10 @@ import ReactFlow, {
 	Controls,
 	Background,
 	OnMove,
+	Viewport,
+	Panel,
+
+	
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -18,7 +22,7 @@ import { PromptNode } from './prompt_node';
 import { PromptEdge } from './prompt_edge';
 
 
-import { addDBNode, addDBEdge, getAllDBEdges, getAllDBNodes, getDBNode, editDBNode } from '../logic/db';
+import { addDBNode, addDBEdge, getAllDBEdges, getAllDBNodes, getDBNode, editDBNode, getAllDBImgIds, addDBImg } from '../logic/db';
 import { edge_db2flow, edge_flow2db, node_db2flow, node_flow2db } from '../logic/convert_utils';
 import { ClientServerBridge } from '../logic/ClientServerBridge';
 
@@ -32,6 +36,9 @@ import { DBEdge, EdgeStyle, FlowEdge, ServerEdge } from '../types/04_edge_t';
 import { send_client_data_to_serveer } from '../tests/sync_server_w_client_data';
 import _, { flow } from 'lodash';
 import { UpdateNodeSync } from '../logic/UpdateNodeSync';
+import { sync_client_nodes_with_server, sync_client_edges_with_server, sync_client_img_with_server } from '../logic/ServerSyncREalated';
+import { edgeCreateWCb, imgCreateCb, nodeCreateWCb } from '../types/types_db';
+import { DBImg } from '../types/03_sd_t';
 
 const nodeTypes = {
 	prompt: PromptNode,
@@ -39,6 +46,12 @@ const nodeTypes = {
 
 const edgeTypes = {
 	prompt: PromptEdge,
+}
+
+interface AllData {
+	nodes: DBNode[], 
+	edges: DBEdge[], 
+	imgs: DBImg[]
 }
 
 const fitViewOptions = {
@@ -56,8 +69,6 @@ const AddNodeOnEdgeDrop = () => {
 	// const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
 	const [nodes, setNodes, onNodesChange] = useNodesState([]);
 	const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-	const [nodeNum, setNodeNum] = useState(0);
-	const [edgeNum, setEdgeNum] = useState(0);
 	const { project } = useReactFlow();
 	const [allowCreate, setAllowCreate] = useState(false);
 
@@ -85,23 +96,25 @@ const AddNodeOnEdgeDrop = () => {
 		let id: number = parseInt(flow_node.id);
 		let position = flow_node.position;
 		UpdateNodeSync.getInstance().update_position(id, position);
-		
+
 	}, [])
 
-	let add_node = async (db_node: DBNode, cb: () => void | undefined) => {
+	let add_node: nodeCreateWCb =  async (db_node: DBNode, cb: () => void | undefined) => {
 		let _flow_node = node_db2flow(db_node);
 		setNodes((nds) => nds.concat(_flow_node));
-		setNodeNum(nodeNum + 1);
-		console.log('+++ add_node: db_node', db_node)
 		await addDBNode(db_node);
 		if (cb) cb();
 	}
 
-	let add_edge = async (db_edge: DBEdge, cb: () => void | undefined) => {
+	let add_edge: edgeCreateWCb = async (db_edge: DBEdge, cb: () => void | undefined) => {
 		let _flow_edge = edge_db2flow(db_edge);
 		setEdges((eds) => eds.concat(_flow_edge));
-		setEdgeNum(edgeNum + 1);
 		await addDBEdge(db_edge);
+		if (cb) cb();
+	}
+
+	let add_img: imgCreateCb = async (db_img: DBImg, cb: () => void | undefined) => {
+		await addDBImg(db_img);
 		if (cb) cb();
 	}
 
@@ -174,77 +187,17 @@ const AddNodeOnEdgeDrop = () => {
 				create_next_node(event, reactFlowWrapper.current, nodeConnectSource.current);
 	}
 
-	const onConnectEnd = useCallback(place_node, [project, nodeNum, edgeNum, allowCreate]);
+	const onConnectEnd = useCallback(place_node, [project, allowCreate]);
 
-	const syncSignatureForSingleNode = (node_id: string) => {
-		let sync_data_in = new syncSignature()
-		sync_data_in.sync_op = syncOps.TRANSFER;
-		sync_data_in.set_ids([node_id], []);
-		return sync_data_in;
-	}
-
-	const syncSignatureForSingleEdge = (edge_id: string) => {
-		let sync_data_in = new syncSignature()
-		sync_data_in.sync_op = syncOps.TRANSFER;
-		sync_data_in.set_ids([], [edge_id]);
-		return sync_data_in;
-	}
-
-	const syncForNode = (sync_data_in: syncSignature, synced: () => void) => {
-		ClientServerBridge.getInstance()
-		.sync_with_server(sync_data_in, (sync_data_out) => {
-			if (sync_data_out.sync_op == syncOps.TRANSFER) {
-				if (sync_data_out.node_data_arr.length > 0) {
-					add_node(sync_data_out.node_data_arr[0], synced)
-				}
-			}
-		});
-	}
-	const syncForEdge = (sync_data_in: syncSignature, synced: () => void) => {
-		ClientServerBridge.getInstance()
-			.sync_with_server(sync_data_in, (sync_data_out) => {
-				if (sync_data_out.sync_op == syncOps.TRANSFER) {
-					if (sync_data_out.edge_data_arr.length > 0) {
-						add_edge(sync_data_out.edge_data_arr[0], synced);
-					}
-				}
-			});
-	}
-
-	const sync_client_nodes_with_server = (node_id_arr: string[]) => {
-		let initial = new Promise<void>((resolve, reject) => resolve());
-
-		node_id_arr.forEach((node_id) => {
-			initial = initial.then(() => {
-				return new Promise<void>((resolve, reject) => {
-					let sync_data_in = syncSignatureForSingleNode(node_id)
-					syncForNode(sync_data_in, () => resolve())
-				});
-			});
-		});
-
-		return initial;
-	}
-
-	const sync_client_edges_with_server = (edge_id_arr: string[]) => {
-		let initial = new Promise<void>((resolve, reject) => resolve());
-
-		edge_id_arr.forEach((edge_id) => {
-			initial = initial.then(() => {
-				return new Promise<void>((resolve, reject) => {
-					let sync_data_in = syncSignatureForSingleEdge(edge_id)
-					syncForEdge(sync_data_in, () => resolve())
-				});
-			});
-		});
-
-		return initial;
-	}
 
 	const sync_client_with_server = (s_sygn: syncSignature, client_node_num: number) => {
-		let { node_id_arr, edge_id_arr } = s_sygn;
-		sync_client_nodes_with_server(node_id_arr)
-			.then(() => sync_client_edges_with_server(edge_id_arr))
+		let { node_id_arr, edge_id_arr, img_id_arr } = s_sygn;
+		console.log("node_id_arr", node_id_arr);
+		console.log("edge_id_arr", edge_id_arr);
+		console.log("img_id_arr", img_id_arr);
+		sync_client_nodes_with_server(node_id_arr, add_node)
+			.then(() => sync_client_edges_with_server(edge_id_arr, add_edge))
+			.then(() => sync_client_img_with_server(img_id_arr, add_img))
 			.then(() => setAllowCreate(true))
 			.then(() => {
 				let total_node_num = node_id_arr.length + client_node_num;
@@ -253,11 +206,12 @@ const AddNodeOnEdgeDrop = () => {
 			})
 	}
 
-	const _initialServerSync = (local_data: { nodes: DBNode[], edges: DBEdge[] }) => {
+	const _initialServerSync = (local_data: AllData) => {
 		let sync_data_in = new syncSignature()
 		sync_data_in.sync_op = syncOps.INFO;
-		let { nodes, edges } = local_data;
-		sync_data_in.fill_ids(nodes, edges);
+		let { nodes, edges, imgs } = local_data;
+		
+		sync_data_in.fill_ids(nodes, edges, imgs);
 
 		ClientServerBridge.getInstance()
 			.sync_with_server(sync_data_in, (sync_data_out) => {
@@ -266,7 +220,7 @@ const AddNodeOnEdgeDrop = () => {
 			});
 	}
 
-	const initialServerSync = (local_data: { nodes: DBNode[], edges: DBEdge[] }) => {
+	const initialServerSync = (local_data: AllData) => {
 
 		if (ClientServerBridge.getInstance().isAuthenticated()) {
 			// send_client_data_to_serveer(local_data.nodes, local_data.edges)
@@ -290,25 +244,30 @@ const AddNodeOnEdgeDrop = () => {
 
 			setNodes(flow_nodes);
 			setEdges(flow_edges);
-			setNodeNum(flow_nodes.length);
-			setEdgeNum(flow_edges.length);
 
-			return {
+			// just id fetch, meaby faser then all bulk data fetch idono
+			let imgIds = (await getAllDBImgIds()).map((id) => {	
+				let db_img_shell = new DBImg();
+				db_img_shell.id = id;
+				return db_img_shell;
+			});
+
+			let all_data = {
 				nodes: db_nodes,
 				edges: db_edges,
+				imgs: imgIds
 			}
+			
+			return all_data
 		};
 
 		fetchData()
 			.then(initialServerSync);
 	}, []);
 
-
 	return (
 		<div className={styles.full_screan_wrapper} ref={reactFlowWrapper}>
-			<MiniMap />
-			<Controls />
-			<Background />
+
 			<ReactFlow
 				nodes={nodes}
 				edges={edges}
@@ -326,7 +285,17 @@ const AddNodeOnEdgeDrop = () => {
 				onMoveStart={move_obs.onMoveStart}
 				onMove={move_obs.onMove}
 				onMoveEnd={move_obs.onMoveEnd}
-			/>
+
+				minZoom={0.125}
+				maxZoom={4}
+				deleteKeyCode={null}
+			>
+				<Panel position="top-left">top-left</Panel>
+				<MiniMap />
+				<Controls />
+				<Background />
+			</ReactFlow>
+
 
 		</div>
 	);

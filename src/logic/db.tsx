@@ -112,3 +112,10 @@ export let addDBImg = async (new_node: DBImg) => {
         .then((store) => store.add(new_node))
     return await job
 }
+
+// get all img ids from img store
+export let getAllDBImgIds = async () => {
+    const db = await initDB();
+    const all_img_ids: number[] = await db.getAllKeys(IMG_FIELD);
+    return all_img_ids;
+}

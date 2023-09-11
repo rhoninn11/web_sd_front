@@ -14,6 +14,10 @@ import { fix_initial_node } from './tests/fix_first_node';
 init_processors();
 // await fix_initial_node();
 
+document.addEventListener('keydown', (event) => {
+    console.log(`Key pressed: ${event.key}, COde: ${event.code}`);
+});
+
 ReactDOM.render(
     <React.StrictMode>
         <App />

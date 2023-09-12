@@ -9,17 +9,15 @@ export class AuthRequestProcessor extends RequestProcessor<authData> {
         this.show_type();
     }
 
-    public to_server(auth_data: authData, on_finish: FinishCB<authData>) {
-        this.on_finish.push(on_finish);
-        this.input_to_server(auth_data);
-        console.log('+++ to server node request');
+    public to_server(auth_data: authData, id?: string) {
+        this.input_to_server(auth_data, id);
+        console.log('+++ auth request');
     }
 
     public from_server(req: serverRequest) {
-        console.log('+++ from server auth request', req);
+        console.log('+++ auth from server', req);
         let auth_data: authData = JSON.parse(req.data);
-        let on_finish = this.on_finish.shift();
-        if (on_finish)
-            on_finish(auth_data);
+        this.execute_fn(req.id, auth_data);
+        this.unbind_fn(req.id);
     }
 }

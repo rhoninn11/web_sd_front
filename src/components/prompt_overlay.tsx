@@ -19,8 +19,6 @@ interface RecipeOverlayProps {
     img_cfg: string;
 }
 
-
-
 export const PromptOverlay = ({
     className,
     children,
@@ -68,8 +66,6 @@ export const PromptOverlay = ({
         styles.card,
         styles.wrapper
     );
-
-
 
     const config_column =
         <div className={section_classes}>

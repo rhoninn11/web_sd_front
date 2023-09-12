@@ -9,15 +9,13 @@ export class SyncProcessor extends RequestProcessor<syncSignature> {
         this.show_type();
     }
 
-    public to_server(syncData: syncSignature, on_finish: FinishCB<syncSignature>) {
-        this.on_finish.push(on_finish);
-        this.input_to_server(syncData);
+    public to_server(syncData: syncSignature, id?: string) {
+        this.input_to_server(syncData, id);
     }
 
     public from_server(req: serverRequest) {
         let sync_data: syncSignature = JSON.parse(req.data);
-        let on_finish = this.on_finish.shift();
-        if (on_finish)
-            on_finish(sync_data);
+        this.execute_fn(req.id, sync_data);
+        this.unbind_fn(req.id);
     }
 }

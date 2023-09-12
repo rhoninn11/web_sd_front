@@ -9,16 +9,15 @@ export class NodeRequestProcessor extends RequestProcessor<ServerNode> {
         this.show_type();
     }
 
-    public to_server(server_node: ServerNode, on_finish: FinishCB<ServerNode>) {
-        this.on_finish.push(on_finish);
-        this.input_to_server(server_node);
-        console.log('+++ to server node request');
+    public to_server(server_node: ServerNode, id?: string) {
+        this.input_to_server(server_node, id);
     }
 
     public from_server(req: serverRequest) {
         let server_node: ServerNode = JSON.parse(req.data);
-        let on_finish = this.on_finish.shift();
-        if (on_finish)
-            on_finish(server_node);
+        this.execute_fn(req.id, server_node);
+        this.unbind_fn(req.id);
     }
 }
+
+

@@ -1,13 +1,15 @@
 import { serverRequest } from "../../types/02_serv_t";
+import { txt2img } from "../../types/03_sd_t";
 import { ClientServerBridge } from "../ClientServerBridge";
-import { EdgeRequestProcessor } from "./EdgeRequestProcessor";
-import { NodeRequestProcessor } from "./NodeRequestProcessor";
+import { v4 as uuid } from 'uuid';
+
 
 export type FinishCB<T> = (data: T) => void;
 
 export class RequestProcessor<T> {
     protected type: string = '';
     protected on_finish: FinishCB<T>[] = [];
+    protected on_finish_2: { [key: string]: FinishCB<T>} = {};
 
     public show_type() {
         console.log('+++ show_type', this.type);
@@ -17,16 +19,40 @@ export class RequestProcessor<T> {
         return this.type === type;
     }
 
-    public to_server(input: T, on_finish: FinishCB<T>) {
+    public bind_fn(on_finish: FinishCB<T>, id?: string) {
+        let uniq_id = id ? id : uuid();
+        this.on_finish_2[uniq_id] = on_finish;
+
+        return this;
+    }
+
+    public unbind_fn(id: string) {
+        if (id in this.on_finish_2)
+            delete this.on_finish_2[id];
+    }
+
+    public execute_fn(id: string, data: T) {
+        console.log('+++ execute_fn', id);
+        if (id in this.on_finish_2) {
+            let on_finish = this.on_finish_2[id];
+            on_finish(data);
+        }
+    }
+
+    public to_server(input: T, id?: string) {
     }
 
     public from_server(req: serverRequest) {
     }
 
-    public input_to_server(input: T) {
+    public input_to_server(input: T, id?: string) {
+        let uniq_id = id ? id : uuid();
+
         let serv_req: serverRequest = {
+            id: uniq_id,
             data: JSON.stringify(input),
             type: this.type,
+
         }
 
         ClientServerBridge.getInstance()

@@ -20,6 +20,7 @@ export class promptConfig {
     prompt_negative: string = '';
     seed: number = 0;
     samples: number = 1;
+    power: number = 1;
 }
 
 export class txt2img_content {
@@ -30,6 +31,10 @@ export class txt2img_content {
 
 export class txt2img {
     txt2img: txt2img_content = new txt2img_content();
+}
+
+export class img2img {
+    img2img: txt2img_content = new txt2img_content();
 }
 
 export class DBImg {

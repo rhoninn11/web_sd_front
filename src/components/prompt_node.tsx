@@ -2,24 +2,28 @@ import styles from './prompt_node.module.scss';
 import React, { memo, useEffect, useState } from 'react';
 import { Handle, NodeProps, Position, useReactFlow } from 'reactflow';
 
-import { Button, Intent, ProgressBar } from '@blueprintjs/core';
+import { Button, Classes, Intent, ProgressBar } from '@blueprintjs/core';
 import { useServerContext } from './SocketProvider';
 import { ClientServerBridge } from '../logic/ClientServerBridge';
 import { PromptOverlay } from './prompt_overlay';
 import { cloneDeep, set } from 'lodash';
 
 import { NodeData, NodeConnData, PromptReference } from '../types/01_node_t';
-import { DBImg, img64, promptConfig } from '../types/03_sd_t';
+import { progress } from '../types/02_serv_t';
+
+import { DBImg, img64, promptConfig, txt2img } from '../types/03_sd_t';
 
 import { addDBImg, editDBNode, getDB, getDBImg, getDBNode } from '../logic/db';
 import { MenuTest } from './menu_test';
 import { UpdateNodeSync } from '../logic/UpdateNodeSync';
+import { T2iOprionals } from '../types/types_db';
+import { prompt_to_txt2img } from '../logic/dono_utils';
+import classNames from 'classnames';
 
 
 
 const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 	const { isAuthenticated } = useServerContext();
-
 
 	const [initPrompt, setInitPrompt] = useState(new promptConfig());
 	const [resultPrompt, setResultprompt] = useState(new promptConfig());
@@ -107,7 +111,7 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 		setShowOverlay(true);
 	}
 
-	let oberlay_btn = !generated ?
+	let oberlay_btn = !generated && !generating ?
 		<Button onClick={ShowPromptOverlay} disabled={generating} rightIcon="edit" intent={Intent.PRIMARY}>
 			Describe
 		</Button>
@@ -120,23 +124,21 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 		result_prompt_save2db(prompt);
 		setGenerating(true);
 
-		let onProgress = (progress: number) => {
-			setProgress(progress);
+		let on_gen_progress = (progr: progress) => {
+			setProgress(progr.progress.value)
 		}
-
-		let onFinished = (web_img64: img64) => {
+		
+		let on_gen_finish = (result: txt2img) => {
+			let web_img64 = result.txt2img.bulk.img;
 			result_img_save2db(web_img64);
 
 			setGenerating(false);
 			setGenerated(true);
 			setProgress(0.0);
-
 		}
 
-		let bridge = ClientServerBridge.getInstance();
-		bridge.send_txt2_img(prompt)
-		bridge.onText2imgResult.push(onFinished);
-		bridge.onText2imgProgress.push(onProgress);
+		ClientServerBridge.getInstance()
+			.send_txt2_img(prompt_to_txt2img(prompt), on_gen_progress, on_gen_finish)
 	}
 
 
@@ -153,10 +155,18 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 	let progress_bar = generating ?
 		<ProgressBar value={progress} />
 		: null;
+
+	let img_classes = classNames(
+		styles.limited_size_img,
+		Classes.SKELETON,
+	)
+
+	let img_preview = generating ? <div className={img_classes}/> : null
+
 	let generated_img = generated ?
 		<img className={styles.limited_size_img}
 			src={resultImg.img64} />
-		: null;
+		: img_preview;
 
 	let display_content = <div>
 		<div> {isAuthenticated ? "authenticated" : "not authenticcated"}</div>
@@ -201,3 +211,5 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 }
 
 export const PromptNode = memo(_PromptNode);
+
+

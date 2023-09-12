@@ -9,17 +9,14 @@ export class EdgeRequestProcessor extends RequestProcessor<ServerEdge> {
         this.show_type();
     }
 
-    public to_server(server_node: ServerEdge, on_finish: FinishCB<ServerEdge>) {
-        this.on_finish.push(on_finish);
-        this.input_to_server(server_node);
-        console.log('+++ to server node request');
+    public to_server(server_node: ServerEdge, id?: string) {
+        this.input_to_server(server_node, id);
     }
 
     public from_server(req: serverRequest) {
-        let server_node: ServerEdge = JSON.parse(req.data);
-        let on_finish = this.on_finish.shift();
-        if (on_finish)
-            on_finish(server_node);
+        let server_edge: ServerEdge = JSON.parse(req.data);
+        this.execute_fn(req.id, server_edge);
+        this.unbind_fn(req.id);
     }
 }
 

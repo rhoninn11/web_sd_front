@@ -1,4 +1,6 @@
 import styles from './prompt_node.module.scss';
+import styles_shered from "./shered_styles.module.scss"
+
 import React, { memo, useEffect, useState } from 'react';
 import { Handle, NodeProps, Position, useReactFlow } from 'reactflow';
 
@@ -11,13 +13,13 @@ import { cloneDeep, set } from 'lodash';
 import { NodeData, NodeConnData, PromptReference } from '../types/01_node_t';
 import { progress } from '../types/02_serv_t';
 
-import { DBImg, img64, promptConfig, txt2img } from '../types/03_sd_t';
+import { DBImg, img2img, img64, promptConfig, txt2img } from '../types/03_sd_t';
 
 import { addDBImg, editDBNode, getDB, getDBImg, getDBNode } from '../logic/db';
 import { MenuTest } from './menu_test';
 import { UpdateNodeSync } from '../logic/UpdateNodeSync';
 import { T2iOprionals } from '../types/types_db';
-import { prompt_to_txt2img } from '../logic/dono_utils';
+import { is_prompt_empty, prompt_to_img2img, prompt_to_txt2img } from '../logic/dono_utils';
 import classNames from 'classnames';
 
 
@@ -26,7 +28,7 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 	const { isAuthenticated } = useServerContext();
 
 	const [initPrompt, setInitPrompt] = useState(new promptConfig());
-	const [resultPrompt, setResultprompt] = useState(new promptConfig());
+	const [resultPrompt, setResultPrompt] = useState(new promptConfig());
 
 	const [generated, setGenerated] = React.useState(false);
 	const [generating, setGenerating] = React.useState(false);
@@ -54,10 +56,9 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 	}
 
 	const tryFetchResultData = async (prompt_ref: PromptReference) => {
-		console.log("+++ elo", prompt_ref)
-		let result_img_id = prompt_ref.prompt_img_id;
+		setResultPrompt(prompt_ref.prompt);
 
-		setResultprompt(prompt_ref.prompt);
+		let result_img_id = prompt_ref.prompt_img_id;
 		if (result_img_id == -1)
 			return;
 
@@ -70,13 +71,17 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 		return;
 	}
 
+	const setup_sample_init_prompt = () => {
+		let sample_prompt = new promptConfig();
+		sample_prompt.prompt = "Cozy italian vilage";
+		sample_prompt.prompt_negative = "Boring sky";
+		setInitPrompt(sample_prompt);
+	}
+
 	const tryFetchInitialData = async () => {
 		let init_node_id = data.node_data.initial_node_id;
 		if (init_node_id == -1) {
-			let sample_prompt = new promptConfig();
-			sample_prompt.prompt = "Cozy italian vilage";
-			sample_prompt.prompt_negative = "Boring sky";
-			setInitPrompt(sample_prompt);
+			setup_sample_init_prompt();
 			return;
 		}
 
@@ -99,9 +104,8 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 	useEffect(() => {
 		const fetchData = async () => {
 			let prompt_ref = data.node_data.result_data;
-			await tryFetchResultData(prompt_ref)
-
 			await tryFetchInitialData()
+			await tryFetchResultData(prompt_ref)
 		};
 
 		fetchData();
@@ -118,9 +122,9 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 		: null
 
 
-	let startGeneration = (prompt: promptConfig) => {
+	let startTxt2img = (prompt: promptConfig) => {
 		setShowOverlay(false);
-		setResultprompt(prompt);
+		setResultPrompt(prompt);
 		result_prompt_save2db(prompt);
 		setGenerating(true);
 
@@ -138,35 +142,68 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 		}
 
 		ClientServerBridge.getInstance()
-			.send_txt2_img(prompt_to_txt2img(prompt), on_gen_progress, on_gen_finish)
+			.send_txt2img(prompt_to_txt2img(prompt), on_gen_progress, on_gen_finish)
+	}
+
+	let startImg2img = (prompt: promptConfig, img_id: number) => {
+		setShowOverlay(false);
+		setResultPrompt(prompt);
+		result_prompt_save2db(prompt);
+		setGenerating(true);
+
+		let on_gen_progress = (progr: progress) => {
+			setProgress(progr.progress.value)
+		}
+		
+		let on_gen_finish = (result: img2img) => {
+			let web_img64 = result.img2img.bulk.img;
+			result_img_save2db(web_img64);
+
+			setGenerating(false);
+			setGenerated(true);
+			setProgress(0.0);
+		}
+
+		ClientServerBridge.getInstance()
+			.send_img2img(prompt_to_img2img(prompt, img_id), on_gen_progress, on_gen_finish)
 	}
 
 
+	let overlay_prompt = is_prompt_empty(resultPrompt) ? initPrompt : resultPrompt;
 	let prompt_overlay = showOoverlay ? <PromptOverlay
 		onClose={() => setShowOverlay(false)}
-		onGenerate={startGeneration}
-		title={'Txt2img options'}
-		init_cfg={initPrompt}
-		img_cfg={initImg.img64}
+		onTxt2img={startTxt2img}
+		onImg2img={startImg2img}
+		title={'Image prompt options'}
+		init_cfg={overlay_prompt}
+		img_cfg={initImg}
 		/>
 		: null
+
 
 
 	let progress_bar = generating ?
 		<ProgressBar value={progress} />
 		: null;
 
-	let img_classes = classNames(
-		styles.limited_size_img,
+
+
+	const classes_img_preview = classNames(
+		styles_shered.smaller_img,
 		Classes.SKELETON,
 	)
+	const classes_img = classNames(
+        styles_shered.smaller_img,
+        styles_shered.prettier_img,
+    );
 
-	let img_preview = generating ? <div className={img_classes}/> : null
-
+	let img_preview = generating ? <div className={classes_img_preview}/> : null
 	let generated_img = generated ?
-		<img className={styles.limited_size_img}
+		<img className={classes_img}
 			src={resultImg.img64} />
 		: img_preview;
+
+
 
 	let display_content = <div>
 		<div> {isAuthenticated ? "authenticated" : "not authenticcated"}</div>
@@ -176,22 +213,14 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 		{progress_bar}
 	</div>
 
-
-
+	let bigger_handl_style = { background: '#784be8', width: "15px", height: "30px", borderRadius: "3px" };
 	return (
 		<>
 			<Handle
 				type="target"
 				position={Position.Left}
-				style={{ background: '#555' }}
+				style={bigger_handl_style}
 				onConnect={(params) => console.log('handle onConnect left', params)}
-				isConnectable={true}
-			/>
-			<Handle
-				type="target"
-				position={Position.Top}
-				style={{ background: '#555' }}
-				onConnect={(params) => console.log('handle onConnect top', params)}
 				isConnectable={true}
 			/>
 			<div className={styles.nice_box}>
@@ -203,7 +232,7 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 				type="source"
 				position={Position.Right}
 				id="a"
-				style={{ background: '#555' }}
+				style={bigger_handl_style}
 				isConnectable={true}
 			/>
 		</>

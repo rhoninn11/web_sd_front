@@ -28,3 +28,8 @@ export const prompt_to_img2img = (prompt: promptConfig, image_id: number): img2i
 
     return img_to_img;
 }
+
+
+export const is_prompt_empty = (prompt: promptConfig): boolean => {
+    return prompt.prompt === '' && prompt.prompt_negative === '';
+}

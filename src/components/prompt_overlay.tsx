@@ -1,5 +1,6 @@
 import styles from "./prompt_overlay.module.scss"
-import { Classes } from "@blueprintjs/core";
+import styles_shered from "./shered_styles.module.scss"
+import { Classes, Slider } from "@blueprintjs/core";
 import { Button, TextArea, Label, NumericInput, Switch } from "@blueprintjs/core";
 import { Overlay, H3, PortalProvider, Intent } from "@blueprintjs/core";
 import { Code } from "@blueprintjs/icons";
@@ -7,16 +8,17 @@ import classNames from "classnames";
 import { useState } from "react";
 
 import { textAreaEditor } from "../logic/editor-helper";
-import { promptConfig } from "../types/03_sd_t";
+import { img64, promptConfig } from "../types/03_sd_t";
 
 interface RecipeOverlayProps {
     className?: string;
     children?: React.ReactNode;
     title: string;
     onClose?: () => void;
-    onGenerate?: (t2i_cfg: promptConfig) => void;
+    onTxt2img?: (t2i_cfg: promptConfig) => void;
+    onImg2img?: (t2i_cfg: promptConfig, ref_img_id: number) => void;
     init_cfg: promptConfig;
-    img_cfg: string;
+    img_cfg: img64;
 }
 
 export const PromptOverlay = ({
@@ -24,7 +26,8 @@ export const PromptOverlay = ({
     children,
     title,
     onClose,
-    onGenerate,
+    onTxt2img,
+    onImg2img,
     init_cfg,
     img_cfg
 }: RecipeOverlayProps) => {
@@ -34,7 +37,9 @@ export const PromptOverlay = ({
     const [prompt, setPrompt] = useState<string>(base_cfg.prompt)
     const [negPrompt, setNegPrompt] = useState<string>(base_cfg.prompt_negative)
     const [seed, setSeed] = useState<number>(base_cfg.seed)
+    const [power, setPower] = useState<number>(1 - base_cfg.power)
 
+    // false - text to image
     const [mode, setMode] = useState<boolean>(false)
 
 
@@ -43,7 +48,8 @@ export const PromptOverlay = ({
         cfg.prompt = prompt;
         cfg.prompt_negative = negPrompt;
         cfg.seed = seed;
-        
+        cfg.power = 1 - power;
+
         return cfg;
     }
 
@@ -53,10 +59,19 @@ export const PromptOverlay = ({
             onClose();
     }
 
+    const _on_txt_2_img = () => {
+        if (onTxt2img)
+            onTxt2img(_cfg_gen());
+    }
+
+    const _on_img_2_img = () => {
+        if (onImg2img)
+            onImg2img(_cfg_gen(), img_cfg.id);
+    }
+
     const _on_generate = () => {
         setVisible(false);
-        if (onGenerate)
-            onGenerate(_cfg_gen());
+        mode ? _on_img_2_img() : _on_txt_2_img();
     }
 
     const section_classes = classNames(
@@ -66,6 +81,21 @@ export const PromptOverlay = ({
         styles.card,
         styles.wrapper
     );
+
+
+    const img2img_related_control = mode ?
+        <Label>
+            Image power
+            <Slider
+                min={0}
+                max={1}
+                stepSize={0.05}
+                labelStepSize={0.2}
+                onChange={(value) => setPower(value)}
+                value={power}
+                handleHtmlProps={{ "aria-label": "example 1" }}
+            />
+        </Label> : null
 
     const config_column =
         <div className={section_classes}>
@@ -80,12 +110,16 @@ export const PromptOverlay = ({
                 <TextArea className={styles.higher}
                     value={negPrompt} onChange={(ev) => textAreaEditor(ev, setNegPrompt)} />
             </Label>
-            <NumericInput
-                min={0}
-                max={100}
-                value={seed}
-                onValueChange={(value) => setSeed(value)}
-            />
+            <Label>
+                Seed
+                <NumericInput
+                    min={0}
+                    max={100}
+                    value={seed}
+                    onValueChange={(value) => setSeed(value)}
+                />
+            </Label>
+            {img2img_related_control}
 
             <div className={Classes.DIALOG_FOOTER_ACTIONS}>
                 <Button intent={Intent.DANGER} onClick={_on_close} style={{ margin: "" }}>
@@ -97,12 +131,17 @@ export const PromptOverlay = ({
             </div>
         </div>
 
-    const allow_img2img = img_cfg.length > 0;
+    const allow_img2img = img_cfg.img64.length > 0;
+    const img_classes = classNames(
+        styles_shered.smaller_img,
+        styles_shered.prettier_img,
+    );
+
 
     const img_ref_column = allow_img2img ?
         <div className={section_classes}>
-            <H3>Image</H3>
-            <img src={img_cfg} alt="img_ref" />
+            <H3>Reference Image</H3>
+            <img className={img_classes} src={img_cfg.img64} alt="img_ref" />
         </div>
         : null
 
@@ -111,16 +150,16 @@ export const PromptOverlay = ({
     };
 
     const fn_row = allow_img2img ?
-    <div className={styles.row}>
-        <div className={section_classes} onMouseEnter={() => console.log("elo")}>
-            <div className={styles.row}>
-                <p> <Code /> {!mode ? <b className={styles.selected}>Text To Image</b> : <del>Text To Image</del>} </p>
-                <Switch onChange={handleSwitchChange} />
-                <p> <Code /> {mode ? <b className={styles.selected}>Image To Image</b> : <del>Image To Image</del>} </p>
+        <div className={styles.row}>
+            <div className={section_classes} onMouseEnter={() => console.log("elo")}>
+                <div className={styles.row}>
+                    <p> <Code /> {!mode ? <b className={styles.selected}>Text To Image</b> : <del>Text To Image</del>} </p>
+                    <Switch onChange={handleSwitchChange} />
+                    <p> <Code /> {mode ? <b className={styles.selected}>Image To Image</b> : <del>Image To Image</del>} </p>
+                </div>
             </div>
         </div>
-    </div>
-    : null
+        : null
 
 
 

@@ -9,7 +9,7 @@ import { ProcessorRepository } from './request_processing/RequestProcessor';
 import { DBNode, FlowNode, ServerNode } from '../types/01_node_t';
 import { FlowOps } from '../types/00_flow_t';
 import { DBEdge, ServerEdge } from '../types/04_edge_t';
-import { img64, promptConfig, txt2img } from '../types/03_sd_t';
+import { img2img, img64, promptConfig, txt2img } from '../types/03_sd_t';
 import { serverRequest, authData, progress, syncSignature } from '../types/02_serv_t';
 import { T2iOprionals } from '../types/types_db';
 import { v4 as uuid } from 'uuid';
@@ -108,7 +108,7 @@ export class ClientServerBridge {
 	public onText2imgResult: ((data: img64) => void)[] = []
 	public onText2imgProgress: ((data: any) => void)[] = []
 
-	public send_txt2_img(text_to_img_in: txt2img, on_progress: (progr: progress) => void, on_finish: (text_to_img_out: txt2img) => void) {
+	public send_txt2img(text_to_img_in: txt2img, on_progress: (progr: progress) => void, on_finish: (text_to_img_out: txt2img) => void) {
 		let unique_id = uuid()
 		let progress_proc = this.req_proc.get_processor('progress')
 			?.bind_fn(on_progress, unique_id);
@@ -121,6 +121,22 @@ export class ClientServerBridge {
 		this.req_proc.get_processor('txt2img')
 			?.bind_fn(on_txt2img_finish, unique_id)
 			.to_server(text_to_img_in, unique_id);
+
+	}
+	
+	public send_img2img(img_to_img_in: img2img, on_progress: (progr: progress) => void, on_finish: (img_to_img_out: img2img) => void) {
+		let unique_id = uuid()
+		let progress_proc = this.req_proc.get_processor('progress')
+			?.bind_fn(on_progress, unique_id);
+
+		let on_img2img_finish = (img_to_img_out: img2img) => {
+			if (progress_proc) progress_proc.unbind_fn(unique_id);
+			on_finish(img_to_img_out);
+		}
+
+		this.req_proc.get_processor('img2img')
+			?.bind_fn(on_img2img_finish, unique_id)
+			.to_server(img_to_img_in, unique_id);
 
 	}
 

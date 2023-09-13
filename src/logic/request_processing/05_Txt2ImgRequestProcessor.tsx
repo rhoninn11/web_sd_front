@@ -22,3 +22,5 @@ export class Txt2ImgRequestProcessor extends RequestProcessor<txt2img> {
     }
 }
 
+
+

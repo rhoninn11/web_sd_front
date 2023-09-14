@@ -11,30 +11,33 @@ import { FlowOps } from '../types/00_flow_t';
 import { DBEdge, ServerEdge } from '../types/04_edge_t';
 import { img2img, img64, promptConfig, txt2img } from '../types/03_sd_t';
 import { serverRequest, authData, progress, syncSignature } from '../types/02_serv_t';
-import { T2iOprionals } from '../types/types_db';
 import { v4 as uuid } from 'uuid';
+import { UserModule } from './UserModule';
 
 
 const serverPort = 8700;
 
 export class ClientServerBridge {
 
-	private auth_try_num: number = 10;
 	private static instance: ClientServerBridge;
 	private req_proc: ProcessorRepository;
+	private user_module: UserModule;
 	private client: W3CWebSocket | null = null;
-	private auth: boolean = false;
+	
 
 	private constructor() {
 		this.req_proc = ProcessorRepository.getInstance();
+		this.user_module = UserModule.getInstance();
 	}
 
 	private _init() {
 		// get host name from web bar
+		console.log('+++ init ClientServerBridge');
 		let host = window.location.hostname;
 		this.client = new W3CWebSocket(`ws://${host}:${serverPort}`);
 		this.client.onopen = () => {
-			this._askForAuth();
+			console.log('WebSocket Client Connected');
+			UserModule.getInstance().askForAuth();
 		}
 		this.client.onmessage = (message) => {
 			this._handleServerMessage(message.data.toString());
@@ -57,29 +60,7 @@ export class ClientServerBridge {
 		}
 	}
 
-	// internals
-	private _askForAuth() {
-		let auth = new authData();
-		// random int from 48 to 55
-		let int_value = Math.floor(Math.random() * (55 - 48 + 1) + 48);
-		let password = 'pulsary' + int_value + '.';
-		auth.password = password
-		console.log('+++ try pass', password);
 
-		let on_finish = (authData: authData) => {
-			console.log('+++ authData', authData);
-			this._setIsAuthenticated(authData.auth);
-			if (!authData.auth && this.auth_try_num > 0) {
-				this.auth_try_num--;
-				setTimeout(() => this._askForAuth(), 100);
-			}
-		}
-
-		let unique_id = uuid()
-		this.req_proc.get_processor('auth')
-			?.bind_fn(on_finish, unique_id)
-			.to_server(auth, unique_id)
-	}
 
 	private _handleServerMessage = (message: string) => {
 		let respo: serverRequest = JSON.parse(message.toString());
@@ -87,26 +68,7 @@ export class ClientServerBridge {
 			?.from_server(respo);
 	}
 
-	// to communicate with react
-	public isAuthenticated = () => {
-		return this.auth;
-	};
 
-	private isAuthenticatedSetter: (suth: boolean) => void = () => { };
-
-	public setAuthenticatedSetter = (setter: (suth: boolean) => void) => {
-		this.isAuthenticatedSetter = setter;
-	}
-
-	private _setIsAuthenticated = (isAuthenticated: boolean) => {
-		console.log('+++ set is authenticated ', isAuthenticated);
-		this.auth = isAuthenticated;
-		this.isAuthenticatedSetter(isAuthenticated);
-	}
-
-	// public methods
-	public onText2imgResult: ((data: img64) => void)[] = []
-	public onText2imgProgress: ((data: any) => void)[] = []
 
 	public send_txt2img(text_to_img_in: txt2img, on_progress: (progr: progress) => void, on_finish: (text_to_img_out: txt2img) => void) {
 		let unique_id = uuid()
@@ -140,7 +102,7 @@ export class ClientServerBridge {
 
 	}
 
-	public send_node(db_node: DBNode, on_finish: (serv_node: ServerNode) => void) {
+	public crate_node(db_node: DBNode, on_finish: (serv_node: ServerNode) => void) {
 		let server_node = new ServerNode();
 		server_node.node_op = FlowOps.CREATE;
 		server_node.db_node = db_node;
@@ -148,6 +110,18 @@ export class ClientServerBridge {
 
 		let unique_id = uuid()
 		this.req_proc.get_processor('serverNode')
+			?.bind_fn(on_finish, unique_id)
+			.to_server(server_node, unique_id)
+	}
+
+	public update_node(db_node: DBNode, on_finish: (serv_node: ServerNode) => void) {
+		let server_node = new ServerNode();
+		server_node.node_op = FlowOps.CREATE;
+		server_node.db_node = db_node;
+		console.log('+++ send_node', server_node);
+
+		let unique_id = uuid()
+		this.req_proc.get_processor('updateNode')
 			?.bind_fn(on_finish, unique_id)
 			.to_server(server_node, unique_id)
 	}

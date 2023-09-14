@@ -1,24 +1,19 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { ClientServerBridge } from '../logic/ClientServerBridge';
+import { UserModule } from '../logic/UserModule';
 
 export interface ServerContextType {
 	isAuthenticated: boolean;
 }
 
-const serverPort = 8700;
 const ServerContext = createContext<ServerContextType | undefined>(undefined);
 
 export const ServerContextProvider: React.FC = ({ children }) => {
-	const [bridge, setBridge] = useState<ClientServerBridge | null>(null);
 	const [isAuthenticated, setIsAuthenticated] = useState(false);
 
 	useEffect(() => {
-		const client = ClientServerBridge.getInstance();
+		const client = UserModule.getInstance();
 		client.setAuthenticatedSetter(setIsAuthenticated);
-		setBridge(client);
 	}, []);
-
-	console.log('+++ render server context', isAuthenticated);
 
 	return (
 		<ServerContext.Provider value={{isAuthenticated}}>

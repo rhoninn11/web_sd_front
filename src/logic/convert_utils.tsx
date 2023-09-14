@@ -8,10 +8,12 @@ export const node_db2flow = (db_node: DBNode): FlowNode => {
     let flow_node: FlowNode = {
         id: db_node.id.toString(),
         type: 'prompt',
+        draggable: false,
         position: db_node.position,
         data: {
             node_data: {
                 id: db_node.id.toString(),
+                user_id: db_node.user_id,
                 initial_node_id: db_node.initial_node_id,
                 result_data: cloneDeep(db_node.result_data),
             },
@@ -24,35 +26,18 @@ export const node_db2flow = (db_node: DBNode): FlowNode => {
     return flow_node;
 }
 
-export const node_flow2db = (flow_node: FlowNode): DBNode => {
-    let db_node: DBNode = {
-        id: parseInt(flow_node.id),
-
-        position: flow_node.position,
-
-        initial_node_id: flow_node.data.node_data.initial_node_id,
-        result_data: cloneDeep(flow_node.data.node_data.result_data),
-    }
-    return db_node;
-}
-
 export const edge_db2flow = (db_edge: DBEdge): FlowEdge => {
+
+    let edge_style = new EdgeStyle();
+    edge_style.set_color(db_edge.user_id)
+
     let flow_edge: FlowEdge = {
         id: db_edge.id.toString(),
         source: db_edge.source,
         target: db_edge.target,
-        style: new EdgeStyle(),
+        style: edge_style,
         type: 'prompt'
     }
     return flow_edge;
 }
 
-export const edge_flow2db = (flow_edge: FlowEdge): DBEdge => {
-    let db_edge: DBEdge = {
-        id: parseInt(flow_edge.id),
-
-        source: flow_edge.source,
-        target: flow_edge.target,
-    }
-    return db_edge;
-}

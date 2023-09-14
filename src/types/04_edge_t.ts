@@ -15,7 +15,7 @@ export class DBEdge {
     user_id: number = -1;
     source: string = '';
     target: string = '';
-
+    timestamp: number = Date.now();
 }
 
 const EDGE_COLOR_ARR = [
@@ -34,10 +34,15 @@ export class EdgeStyle {
     stroke: string = DEFAULT_EDGE_COLOR;
 
     set_color(id: number){
-        if(id < EDGE_COLOR_ARR.length)
+        console.log('!!!set_color', id);
+        if(id >= 0 && id < EDGE_COLOR_ARR.length){
+            console.log('!!! id', id);
             this.stroke = EDGE_COLOR_ARR[id];
-        else
+        }
+        else{
             this.stroke = DEFAULT_EDGE_COLOR;
+            console.log('!!! default');
+        }
     }
 }
 

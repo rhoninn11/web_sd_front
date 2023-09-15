@@ -23,7 +23,7 @@ import { PromptEdge } from './prompt_edge';
 
 
 import { addDBNode, addDBEdge, getAllDBEdges, getAllDBNodes, getDBNode, editDBNode, getAllDBImgIds, addDBImg } from '../logic/db';
-import { edge_db2flow, node_db2flow} from '../logic/convert_utils';
+import { edge_db2flow, node_db2flow } from '../logic/convert_utils';
 import { ClientServerBridge } from '../logic/ClientServerBridge';
 
 // types
@@ -73,7 +73,11 @@ const AddNodeOnEdgeDrop = () => {
 	const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 	const { project } = useReactFlow();
 	const [allowCreate, setAllowCreate] = useState(false);
+
 	const [validUser, setValidUser] = useState(false);
+	const [userId, setUserId] = useState(-1);
+
+	
 
 
 	const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), []);
@@ -102,7 +106,7 @@ const AddNodeOnEdgeDrop = () => {
 			UpdateNodeSync.getInstance().update_position(id, position);
 		}
 
-	}, [])
+	}, [validUser])
 
 	let add_node: nodeCreateWCb = async (db_node: DBNode, cb: () => void | undefined) => {
 		let _flow_node = node_db2flow(db_node);
@@ -128,7 +132,7 @@ const AddNodeOnEdgeDrop = () => {
 	let ask_serv_to_create_node = (db_node: DBNode) => {
 		return new Promise<DBNode>((resolve, reject) => {
 			ClientServerBridge.getInstance()
-				.crate_node(db_node, (serv_node) => add_node(serv_node.db_node, () => resolve(serv_node.db_node)));
+				.create_node(db_node, (serv_node) => add_node(serv_node.db_node, () => resolve(serv_node.db_node)));
 		});
 
 	}
@@ -136,7 +140,7 @@ const AddNodeOnEdgeDrop = () => {
 	let ask_serv_to_create_edge = (db_edge: DBEdge) => {
 		return new Promise<DBEdge>((resolve, reject) => {
 			ClientServerBridge.getInstance()
-				.send_edge(db_edge, (serv_edge) => add_edge(serv_edge.db_edge, () => resolve(serv_edge.db_edge)));
+				.create_edge(db_edge, (serv_edge) => add_edge(serv_edge.db_edge, () => resolve(serv_edge.db_edge)));
 		});
 
 	}
@@ -241,16 +245,26 @@ const AddNodeOnEdgeDrop = () => {
 	}
 
 	const checkAuth = () => {
-		return new Promise<void>((resolve, reject) => {
+		let auth_loop = new Promise<void>((resolve, reject) => {
 			auth_check_async_loop(resolve, 100);
 		})
+
+		let auth_chain = auth_loop
+			.then(() => console.log('+INFO+ user authenticated'))
+			.then(() => {
+				let usr_id = UserModule.getInstance().getUserId();
+				setValidUser(true);
+				setUserId(usr_id);
+			})
+
+		return auth_chain;
 	}
 
 	// step 3
 	const initialServerSync = (local_data: AllData) => {
 		let sync_data_in = new syncSignature()
 		sync_data_in.sync_op = syncOps.INFO;
-		
+
 		let { nodes, edges, imgs } = local_data;
 		sync_data_in.fill_ids(nodes, edges, imgs);
 
@@ -275,9 +289,10 @@ const AddNodeOnEdgeDrop = () => {
 		console.log("img_id_arr", img_id_arr);
 
 		let sync_chain = start_chain()
+		.then(() => sync_client_img_with_server(img_id_arr, add_img))
 			.then(() => sync_client_nodes_with_server(node_id_arr, add_node))
 			.then(() => sync_client_edges_with_server(edge_id_arr, add_edge))
-			.then(() => sync_client_img_with_server(img_id_arr, add_img))
+			.then(() => console.log('+INFO+ server synced'))
 			.then(() => node_id_arr.length + client_node_num);
 
 		return sync_chain;
@@ -287,9 +302,6 @@ const AddNodeOnEdgeDrop = () => {
 		let user_id = UserModule.getInstance().getUserId();
 		local_data.nodes.filter((node) => node.user_id == user_id)
 	}
-
-
-
 
 	useEffect(() => {
 		let local_data: AllData = { nodes: [], edges: [], imgs: [] };
@@ -301,7 +313,7 @@ const AddNodeOnEdgeDrop = () => {
 			// .then(() => initialServerSync(local_data))
 			.then((node_num) => {
 				setAllowCreate(true)
-				if(node_num == 0)
+				if (node_num == 0)
 					create_first_node();
 			})
 	}, []);
@@ -332,7 +344,7 @@ const AddNodeOnEdgeDrop = () => {
 				maxZoom={4}
 				deleteKeyCode={null}
 			>
-				<Panel position="top-left"><InfoPanel/></Panel>
+				<Panel position="top-left"><InfoPanel /></Panel>
 				<MiniMap />
 				<Controls />
 				<Background />

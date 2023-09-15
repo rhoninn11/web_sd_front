@@ -8,7 +8,7 @@ import { DBNode } from "../types/01_node_t";
 
 class updateStruct {
     id: number;
-    update_queue: (() => void)[] = [];
+    update_queue: (() => Promise<void>)[] = [];
     changes_num: number = 0;
     is_spinning: boolean = false;
     is_serv_syncing: boolean = false;
@@ -42,8 +42,6 @@ export class UpdateNodeSync {
 
         return UpdateNodeSync.instance;
     }
-
-
 
     //mechanism
     private get_update_struct_safe = (id: number) => {
@@ -82,60 +80,82 @@ export class UpdateNodeSync {
 
         up_St.is_spinning = true;
         this.try_to_run_update(up_St)
-        this.try_reduce_queue(id)
+            .then(() =>this.try_reduce_queue(up_St.id))
+            .then((continue_flag) => {
+                if (continue_flag)
+                    this.respin(up_St)
+                else
+                    up_St.is_spinning = false;
+            });
     }
 
     
     private try_to_run_update = (up_st: updateStruct) => {
         if (up_st.update_queue.length == 0)
-            return;
+            return new Promise<void>((resolve, reject) => resolve());
+
+        let update_promise = up_st.update_queue.shift();
+        if (!update_promise)
+            return new Promise<void>((resolve, reject) => resolve());
 
         up_st.changes_num += 1;
-        let update_fn = up_st.update_queue.shift();
-        if (update_fn) update_fn(); //update fn is async, so mutex like flag is used
+        return update_promise()
+            .then(() => console.log('+SYNC+ update for node: ', up_st.id))
 
-        this.respin(up_st);
     }
 
     
     private try_reduce_queue = (id: number) => {
         let up_st = this.node_queues[id];
         if (up_st.update_queue.length > 0)
-            return;
+            return new Promise<boolean>((resolve, reject) => resolve(true));
 
         if (up_st.changes_num == 0) {
             delete this.node_queues[id];
-            return;
+            console.log('+SYNC+ finished: ', id);
+            return new Promise<boolean>((resolve, reject) => resolve(false));
         }
 
+        console.log('+SYNC+ server start: ', id);
         up_st.sync_barier_on();
-        getDBNode(id)
+        return getDBNode(id)
             .then(this.server_sync)
-            .then(async (db_node) => {
-                await editDBNode(db_node.id, db_node);
-                up_st.sync_barier_off();
-                this.respin(up_st);
-            });
+            .then((db_node) => editDBNode(id, db_node))
+            .then(() => console.log('+SYNC+ server finish: ', id))
+            .then(() => up_st.sync_barier_off())
+            .then(() => true)
     }
 
 
     // interactions
     private _update_position = async (id: number, pos: NodePosition) => {
-        getDBNode(id).then(async (db_node) => {
-            db_node.position = pos;
-            await editDBNode(db_node.id, db_node);
+        return getDBNode(id)
+        .then((db_node) => {
+            console.log('+SYNC+ new pos: ', pos, " for node: ", id);
+            console.log('+SYNC+ db old pos: ', db_node.position);
+            return db_node;
+        })        
+        .then((old_db_node) => {
+            old_db_node.position = pos;
+            return editDBNode(id, old_db_node);
+        })
+        .then(async () => {
+            let new_db_node = await getDBNode(id)
+            console.log('+SYNC+ db new pos: ', new_db_node.position);
             return;
-        });
+        })
+        .then(() => console.log('+SYNC+ sync test'))
     }
 
     public update_position(id: number, pos: NodePosition) {
+        console.log('+SYNC+ update_position: ', id, pos);
         let queue = this.get_update_struct_safe(id)
         queue.update_queue.push(() => this._update_position(id, pos));
         this.run_update_and_reduce(id);
     }
 
     private _update_result_img = async (id: number, img_id: number) => {
-        getDBNode(id).then(async (db_node) => {
+        return getDBNode(id).then(async (db_node) => {
             db_node.result_data.prompt_img_id = img_id;
             await editDBNode(db_node.id, db_node);
             return;
@@ -149,7 +169,7 @@ export class UpdateNodeSync {
     }
 
     private _update_result_prompt = async (id: number, prompt: promptConfig) => {
-        getDBNode(id).then(async (db_node) => {
+        return getDBNode(id).then(async (db_node) => {
             db_node.result_data.prompt = prompt;
             await editDBNode(db_node.id, db_node);
             return;

@@ -5,7 +5,7 @@
 
 
 import { ProcessorRepository } from './request_processing/RequestProcessor';
-import { serverRequest, authData} from '../types/02_serv_t';
+import { serverRequest, authData } from '../types/02_serv_t';
 import { v4 as uuid } from 'uuid';
 
 
@@ -16,7 +16,7 @@ export class UserModule {
 	private static instance: UserModule;
 
 	private req_proc: ProcessorRepository;
-	
+
 	private auth_try_num: number = 4;
 	private auth: boolean = false;
 	private user_id: number = -1;
@@ -33,9 +33,13 @@ export class UserModule {
 		return UserModule.instance;
 	}
 
+	getRandomInt(max: number) {
+		return Math.floor(Math.random() * max);
+	}
+
 	private _pass_gen() {
 		// random int from 48 to 55
-		let int_value = Math.floor(Math.random() * (55 - 48 + 1) + 48);
+		let int_value = this.getRandomInt(2) + 50;
 		let password = 'pulsary' + int_value + '.';
 		console.log("generated password: ", password)
 		return password
@@ -45,7 +49,7 @@ export class UserModule {
 	public askForAuth() {
 		let auth = new authData();
 		auth.password = this._pass_gen()
-		
+
 
 		let on_finish = (authData: authData) => {
 			this._setIsAuthenticated(authData.auth);

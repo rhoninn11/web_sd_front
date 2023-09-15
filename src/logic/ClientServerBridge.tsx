@@ -37,7 +37,7 @@ export class ClientServerBridge {
 		this.client = new W3CWebSocket(`ws://${host}:${serverPort}`);
 		this.client.onopen = () => {
 			console.log('WebSocket Client Connected');
-			UserModule.getInstance().askForAuth();
+			this.user_module.askForAuth();
 		}
 		this.client.onmessage = (message) => {
 			this._handleServerMessage(message.data.toString());
@@ -102,11 +102,12 @@ export class ClientServerBridge {
 
 	}
 
-	public crate_node(db_node: DBNode, on_finish: (serv_node: ServerNode) => void) {
+	public create_node(db_node: DBNode, on_finish: (serv_node: ServerNode) => void) {
 		let server_node = new ServerNode();
-		server_node.node_op = FlowOps.CREATE;
 		server_node.db_node = db_node;
-		console.log('+++ send_node', server_node);
+		server_node.node_op = FlowOps.CREATE;
+		server_node.user_id = this.user_module.getUserId();
+		console.log('+BRIDGE+ create node');
 
 		let unique_id = uuid()
 		this.req_proc.get_processor('serverNode')
@@ -116,14 +117,29 @@ export class ClientServerBridge {
 
 	public update_node(db_node: DBNode, on_finish: (serv_node: ServerNode) => void) {
 		let server_node = new ServerNode();
-		server_node.node_op = FlowOps.CREATE;
 		server_node.db_node = db_node;
-		console.log('+++ send_node', server_node);
+		server_node.node_op = FlowOps.UPDATE;
+		server_node.user_id = this.user_module.getUserId();
+		console.log('+BRIDGE+ update node');
 
 		let unique_id = uuid()
 		this.req_proc.get_processor('updateNode')
 			?.bind_fn(on_finish, unique_id)
 			.to_server(server_node, unique_id)
+	}
+
+	public create_edge(db_edge: DBEdge, on_finish: (serv_edge: ServerEdge) => void) {
+		let server_edge = new ServerEdge();
+		server_edge.db_edge = db_edge
+		server_edge.node_op = FlowOps.CREATE;
+		server_edge.user_id = this.user_module.getUserId();
+		console.log('+BRIDGE+ create edge');
+
+
+		let unique_id = uuid()
+		this.req_proc.get_processor('serverEdge')
+			?.bind_fn(on_finish, unique_id)
+			.to_server(server_edge, unique_id)
 	}
 
 	// public sync_node(db_node: DBNode, on_finish: (serv_node: ServerNode) => void) {
@@ -147,16 +163,7 @@ export class ClientServerBridge {
 
 	// }
 
-	public send_edge(db_edge: DBEdge, on_finish: (serv_edge: ServerEdge) => void) {
-		let server_edge = new ServerEdge();
-		server_edge.node_op = FlowOps.CREATE;
-		server_edge.db_edge = db_edge
 
-		let unique_id = uuid()
-		this.req_proc.get_processor('serverEdge')
-			?.bind_fn(on_finish, unique_id)
-			.to_server(server_edge, unique_id)
-	}
 
 	// public sync_edge(db_edge: DBEdge, on_finish: (serv_edge: ServerEdge) => void) {
 	// 	let server_edge = new ServerEdge();

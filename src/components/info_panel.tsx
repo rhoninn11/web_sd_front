@@ -32,7 +32,7 @@ export const InfoPanel = ({
     let on_auth = () => {
         let auth_val = UserModule.getInstance().isAuthenticated()
         let user_id_val = UserModule.getInstance().getUserId()
-        setUserId(user_id_val)
+        setUserId(user_id_val.toString())
         setAuth(auth_val)
     }
 
@@ -51,10 +51,26 @@ export const InfoPanel = ({
                         <div>User id: {user_id_text}</div>
                         {/* <MenuItem icon="add" text="Add new" />
                         <MenuItem icon="remove" text="Remove" /> */}
-                        <MenuItem icon="refresh" text="refresh" onClick={() => console.log("refresh")} />
+                        <MenuItem icon="log-in" text="login" onClick={() => console.log("logins")} />
                     </>
                 )}
             />
         </Menu>
     );
 };
+
+import { OverlayToaster } from "@blueprintjs/core";
+import { Position } from "reactflow";
+
+
+export const NotificationToster = OverlayToaster.create({
+	className: "recipe-toaster",
+	position: Position.Bottom,
+});
+
+
+export const SyncInfoToster = OverlayToaster.create({
+	className: "recipe-toaster",
+	position: Position.Bottom,
+});
+

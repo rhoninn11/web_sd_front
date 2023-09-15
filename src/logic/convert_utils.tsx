@@ -8,7 +8,7 @@ export const node_db2flow = (db_node: DBNode): FlowNode => {
     let flow_node: FlowNode = {
         id: db_node.id.toString(),
         type: 'prompt',
-        draggable: false,
+        draggable: true,
         position: db_node.position,
         data: {
             node_data: {

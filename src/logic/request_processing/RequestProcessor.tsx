@@ -8,8 +8,7 @@ export type FinishCB<T> = (data: T) => void;
 
 export class RequestProcessor<T> {
     protected type: string = '';
-    protected on_finish: FinishCB<T>[] = [];
-    protected on_finish_2: { [key: string]: FinishCB<T>} = {};
+    protected on_finish_dict: { [key: string]: FinishCB<T>} = {};
 
     public show_type() {
         console.log('+++ show_type', this.type);
@@ -21,20 +20,20 @@ export class RequestProcessor<T> {
 
     public bind_fn(on_finish: FinishCB<T>, id?: string) {
         let uniq_id = id ? id : uuid();
-        this.on_finish_2[uniq_id] = on_finish;
+        this.on_finish_dict[uniq_id] = on_finish;
 
         return this;
     }
 
     public unbind_fn(id: string) {
-        if (id in this.on_finish_2)
-            delete this.on_finish_2[id];
+        if (id in this.on_finish_dict)
+            delete this.on_finish_dict[id];
     }
 
     public execute_fn(id: string, data: T) {
-        console.log('+++ execute_fn', id);
-        if (id in this.on_finish_2) {
-            let on_finish = this.on_finish_2[id];
+        // console.log('+++ execute_fn', id);
+        if (id in this.on_finish_dict) {
+            let on_finish = this.on_finish_dict[id];
             on_finish(data);
         }
     }

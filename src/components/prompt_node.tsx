@@ -2,25 +2,24 @@ import styles from './prompt_node.module.scss';
 import styles_shered from "./shered_styles.module.scss"
 
 import React, { memo, useEffect, useState } from 'react';
-import { Handle, NodeProps, Position, useReactFlow } from 'reactflow';
+import { Handle, NodeProps, Position } from 'reactflow';
 
 import { Button, Classes, Intent, ProgressBar } from '@blueprintjs/core';
 import { useServerContext } from './SocketProvider';
 import { ClientServerBridge } from '../logic/ClientServerBridge';
 import { PromptOverlay } from './prompt_overlay';
-import { cloneDeep, set } from 'lodash';
 
-import { NodeData, NodeConnData, PromptReference } from '../types/01_node_t';
+import {  NodeConnData, PromptReference } from '../types/01_node_t';
 import { progress } from '../types/02_serv_t';
 
 import { DBImg, img2img, img64, promptConfig, txt2img } from '../types/03_sd_t';
 
-import { addDBImg, editDBNode, getDB, getDBImg, getDBNode } from '../logic/db';
+import { addDBImg, getDBImg, getDBNode } from '../logic/db';
 import { MenuTest } from './menu_test';
 import { UpdateNodeSync } from '../logic/UpdateNodeSync';
-import { T2iOprionals } from '../types/types_db';
 import { is_prompt_empty, prompt_to_img2img, prompt_to_txt2img } from '../logic/dono_utils';
 import classNames from 'classnames';
+import { NotificationToster } from './info_panel';
 
 
 
@@ -131,7 +130,7 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 		let on_gen_progress = (progr: progress) => {
 			setProgress(progr.progress.value)
 		}
-		
+
 		let on_gen_finish = (result: txt2img) => {
 			let web_img64 = result.txt2img.bulk.img;
 			result_img_save2db(web_img64);
@@ -154,7 +153,7 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 		let on_gen_progress = (progr: progress) => {
 			setProgress(progr.progress.value)
 		}
-		
+
 		let on_gen_finish = (result: img2img) => {
 			let web_img64 = result.img2img.bulk.img;
 			result_img_save2db(web_img64);
@@ -177,7 +176,7 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 		title={'Image prompt options'}
 		init_cfg={overlay_prompt}
 		img_cfg={initImg}
-		/>
+	/>
 		: null
 
 
@@ -193,11 +192,11 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 		Classes.SKELETON,
 	)
 	const classes_img = classNames(
-        styles_shered.smaller_img,
-        styles_shered.prettier_img,
-    );
+		styles_shered.smaller_img,
+		styles_shered.prettier_img,
+	);
 
-	let img_preview = generating ? <div className={classes_img_preview}/> : null
+	let img_preview = generating ? <div className={classes_img_preview} /> : null
 	let generated_img = generated ?
 		<img className={classes_img}
 			src={resultImg.img64} />
@@ -213,6 +212,11 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 		{progress_bar}
 	</div>
 
+	const add_notification = (title: string, msg: string) => {
+		const elo = <div><b>{title}</b>: {msg}</div>
+		NotificationToster.show({ message: elo, intent: Intent.PRIMARY })
+	}
+
 	let bigger_handl_style = { background: '#784be8', width: "15px", height: "30px", borderRadius: "3px" };
 	return (
 		<>
@@ -226,7 +230,13 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 			<div className={styles.nice_box}>
 				Stable diffusion XL txt2img
 				{display_content}
-				<MenuTest refresh={async () => await tryFetchInitialData()} />
+				<MenuTest
+					prompt_text={resultPrompt.prompt}
+					prompt_neg_text={resultPrompt.prompt_negative}
+					copied={add_notification}
+					refresh={async () => {
+						await tryFetchInitialData()
+					}} />
 			</div>
 			<Handle
 				type="source"

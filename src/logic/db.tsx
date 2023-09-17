@@ -71,7 +71,10 @@ export let editDBNode = async (id: number, updated_value: DBNode) => {
     let node = await store.get(id)
     if (node) {
         await store.put(updated_value);
+        return true;
     }
+
+    return false;
 }
 
 export let getAllDBEdges = async () => {

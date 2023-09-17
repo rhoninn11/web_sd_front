@@ -105,7 +105,7 @@ export class ClientServerBridge {
 	public create_node(db_node: DBNode, on_finish: (serv_node: ServerNode) => void) {
 		let server_node = new ServerNode();
 		server_node.db_node = db_node;
-		server_node.node_op = FlowOps.CREATE;
+		server_node.db_node.node_op = FlowOps.CREATE;
 		server_node.user_id = this.user_module.getUserId();
 		console.log('+BRIDGE+ create node');
 
@@ -118,7 +118,7 @@ export class ClientServerBridge {
 	public update_node(db_node: DBNode, on_finish: (serv_node: ServerNode) => void) {
 		let server_node = new ServerNode();
 		server_node.db_node = db_node;
-		server_node.node_op = FlowOps.UPDATE;
+		server_node.db_node.node_op = FlowOps.UPDATE;
 		server_node.user_id = this.user_module.getUserId();
 		console.log('+BRIDGE+ update node');
 
@@ -182,6 +182,11 @@ export class ClientServerBridge {
 		this.req_proc.get_processor('sync')
 			?.bind_fn(on_finish, unique_id)
 			.to_server(syncSignature, unique_id)
+	}
+
+	
+	public sync_timestump_with_server(syncSignature: syncSignature, on_finish: (sync_syg: syncSignature) => void) {
+		this.sync_with_server(syncSignature, on_finish);
 	}
 
 }

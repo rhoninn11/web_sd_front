@@ -36,11 +36,12 @@ import { DBEdge, EdgeStyle, FlowEdge, ServerEdge } from '../types/04_edge_t';
 import { send_client_data_to_serveer } from '../tests/sync_server_w_client_data';
 import _, { flow, set } from 'lodash';
 import { UpdateNodeSync } from '../logic/UpdateNodeSync';
-import { sync_client_nodes_with_server, sync_client_edges_with_server, sync_client_img_with_server } from '../logic/ServerSyncREalated';
+import { sync_client_nodes_with_server, sync_client_edges_with_server, sync_client_img_with_server, sync_client_ts_nodes_with_server } from '../logic/ServerSyncREalated';
 import { edgeCreateWCb, imgCreateCb, nodeCreateWCb } from '../types/types_db';
 import { DBImg } from '../types/03_sd_t';
 import { UserModule } from '../logic/UserModule';
 import { InfoPanel } from './info_panel';
+import { FlowOps } from '../types/00_flow_t';
 
 const nodeTypes = {
 	prompt: PromptNode,
@@ -77,9 +78,6 @@ const AddNodeOnEdgeDrop = () => {
 	const [validUser, setValidUser] = useState(false);
 	const [userId, setUserId] = useState(-1);
 
-	
-
-
 	const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), []);
 
 	const get_node_hl_data = (id: string) => {
@@ -108,11 +106,30 @@ const AddNodeOnEdgeDrop = () => {
 
 	}, [validUser])
 
+	let node_route: nodeCreateWCb = async (db_node: DBNode, cb: () => void | undefined) => {
+		if (db_node.node_op == FlowOps.CREATE)
+			add_node(db_node, cb);
+		else if (db_node.node_op == FlowOps.UPDATE)
+			edit_node(db_node, cb);
+
+	}
+
 	let add_node: nodeCreateWCb = async (db_node: DBNode, cb: () => void | undefined) => {
 		let _flow_node = node_db2flow(db_node);
 		setNodes((nds) => nds.concat(_flow_node));
 		await addDBNode(db_node);
 		if (cb) cb();
+	}
+
+	let edit_node: nodeCreateWCb = async (db_node: DBNode, cb: () => void | undefined) => {
+		let result = await editDBNode(db_node.id, db_node);
+		if (result){
+			// edit flow
+			if (cb) cb();
+		}
+		else {
+			await add_node(db_node, cb);
+		}
 	}
 
 	let add_edge: edgeCreateWCb = async (db_edge: DBEdge, cb: () => void | undefined) => {
@@ -122,6 +139,8 @@ const AddNodeOnEdgeDrop = () => {
 		await addDBEdge(db_edge);
 		if (cb) cb();
 	}
+
+
 
 	let add_img: imgCreateCb = async (db_img: DBImg, cb: () => void | undefined) => {
 		await addDBImg(db_img);
@@ -282,6 +301,27 @@ const AddNodeOnEdgeDrop = () => {
 		return chain;
 	}
 
+	const inialTimestepServerSync = async () => {
+		let sync_data_in = new syncSignature()
+		sync_data_in.sync_op = syncOps.INFO_TS;
+
+		let nodes = await getAllDBNodes();
+		sync_data_in.fill_ids(nodes, [], []);
+
+		let chain = new Promise<number>((resolve, reject) => {
+			ClientServerBridge.getInstance()
+				.sync_timestump_with_server(sync_data_in, (sync_data_out) => {
+					if (sync_data_out.sync_op != syncOps.INFO_TS)
+						return;
+
+						sync_client_ts_with_server(sync_data_out, nodes.length)
+						.then(() => resolve(nodes.length));
+				});
+		});
+
+		return chain;
+	}
+
 	const sync_client_with_server = (s_sygn: syncSignature, client_node_num: number) => {
 		let { node_id_arr, edge_id_arr, img_id_arr } = s_sygn;
 		console.log("node_id_arr", node_id_arr);
@@ -298,22 +338,29 @@ const AddNodeOnEdgeDrop = () => {
 		return sync_chain;
 	}
 
-	const release_node = (local_data: AllData) => {
-		let user_id = UserModule.getInstance().getUserId();
-		local_data.nodes.filter((node) => node.user_id == user_id)
+	const sync_client_ts_with_server = (s_sygn: syncSignature, client_node_num: number) => {
+		let { node_data_arr } = s_sygn;
+
+		let sync_chain = start_chain()
+			.then(() => sync_client_ts_nodes_with_server(node_data_arr, node_route))
+			.then(() => console.log('+INFO+ timpestump server synced'))
+
+		return sync_chain;
 	}
 
 	useEffect(() => {
 		let local_data: AllData = { nodes: [], edges: [], imgs: [] };
+		let node_num_data = 0;
 		start_chain()
 			.then(() => fetchData())
 			.then((data) => local_data = data)
 			.then(checkAuth)
 			.then(() => initialServerSync(local_data))
-			// .then(() => initialServerSync(local_data))
-			.then((node_num) => {
+			.then((node_num) => node_num_data = node_num)
+			.then(() => inialTimestepServerSync())
+			.then(() => {
 				setAllowCreate(true)
-				if (node_num == 0)
+				if (node_num_data == 0)
 					create_first_node();
 			})
 	}, []);

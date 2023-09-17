@@ -1,5 +1,6 @@
 import { DBNode } from "../types/01_node_t";
 import { syncOps, syncSignature } from "../types/02_serv_t";
+import { DBEdge } from "../types/04_edge_t";
 import { edgeCreateWCb, imgCreateCb, nodeCreateWCb } from "../types/types_db";
 import { ClientServerBridge } from "./ClientServerBridge";
 
@@ -30,6 +31,29 @@ export const sync_client_nodes_with_server = (node_id_arr: string[], add_node_cb
         initial = initial.then(() => {
             return new Promise<void>((resolve, reject) => {
                 let sync_data_in = syncSignatureForSingle_Node(node_id)
+                syncFor_Node(sync_data_in, add_node_cb, () => resolve())
+            });
+        });
+    });
+
+    return initial;
+}
+export const sync_client_ts_nodes_with_server = (nodes: DBNode[], add_node_cb: nodeCreateWCb) => {
+    let initial = new Promise<void>((resolve, reject) => resolve());
+
+    let simple_nodes = nodes.map((node) => {
+        let simple_node = new DBNode();
+        simple_node.id = node.id;
+        simple_node.timestamp = node.timestamp;
+        return simple_node;
+    })
+
+    simple_nodes.forEach((node_in) => {
+        initial = initial.then(() => {
+            return new Promise<void>((resolve, reject) => {
+                let sync_data_in = new syncSignature()
+                sync_data_in.sync_op = syncOps.TRANSFER;
+                sync_data_in.fill_data([node_in], [], [])
                 syncFor_Node(sync_data_in, add_node_cb, () => resolve())
             });
         });

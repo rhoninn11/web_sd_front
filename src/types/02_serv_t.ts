@@ -57,7 +57,7 @@ export class syncSignature {
     edge_data_arr: DBEdge[] = [];
     img_data_arr: DBImg[] = [];
 
-    set_ids(nodes: string[], edges: string[], imgs: string[]){
+    _set_ids(nodes: string[], edges: string[], imgs: string[]){
         this.node_id_arr = nodes;
         this.edge_id_arr = edges;
         this.img_id_arr = imgs;
@@ -68,7 +68,8 @@ export class syncSignature {
         let node_id_arr = nodes.map((node) => node.id.toString())
 		let edge_id_arr = edges.map((edge) => edge.id.toString())
 		let img_id_arr = imgs.map((img) => img.id.toString())
-        this.set_ids(node_id_arr, edge_id_arr, img_id_arr);
+        this._set_ids(node_id_arr, edge_id_arr, img_id_arr);
+        return this;
     }
 
     fill_data(nodes: DBNode[], edges: DBEdge[], imgs: DBImg[] ){
@@ -76,6 +77,7 @@ export class syncSignature {
         this.node_data_arr = nodes;
         this.edge_data_arr = edges;
         this.img_data_arr = imgs;
+        return this;
     }
 
     empty(){

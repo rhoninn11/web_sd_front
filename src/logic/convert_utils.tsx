@@ -8,7 +8,7 @@ export const node_db2flow = (db_node: DBNode): FlowNode => {
     let flow_node: FlowNode = {
         id: db_node.id.toString(),
         type: 'prompt',
-        draggable: true,
+        draggable: false,
         position: db_node.position,
         data: {
             node_data: {
@@ -16,6 +16,7 @@ export const node_db2flow = (db_node: DBNode): FlowNode => {
                 user_id: db_node.user_id,
                 initial_node_id: db_node.initial_node_id,
                 result_data: cloneDeep(db_node.result_data),
+                counter: 0,
             },
             node_callback: {
                 on_update_result_img: () => { },

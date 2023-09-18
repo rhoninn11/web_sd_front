@@ -18,9 +18,17 @@
     background-color: rgba(39, 38, 50, 0.5);
 }
 
+.other_users_node {
+    border: 1px solid #ccc;
+}
+
+.this_user_node {
+    border: 5px solid #bff0ca;
+}
+
 .my_handle {
     width: 30px;
     height: 14px;
     border-radius: 3px;
-    background-color: #784be8;
+    background-color: #36265f;
   }

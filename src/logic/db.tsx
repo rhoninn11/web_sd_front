@@ -68,13 +68,11 @@ export let addDBNode = async (new_node: DBNode) => {
 
 export let editDBNode = async (id: number, updated_value: DBNode) => {
     let store = await _get_store(NODE_FIELD)
-    let node = await store.get(id)
-    if (node) {
+    let prev = await store.get(id) as DBNode
+    if (prev)
         await store.put(updated_value);
-        return true;
-    }
 
-    return false;
+    return prev;
 }
 
 export let getAllDBEdges = async () => {

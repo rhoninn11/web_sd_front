@@ -40,6 +40,12 @@ export const InfoPanel = ({
         auth_check_async_loop(on_auth, 100);
     }, []);
 
+    const try_to_login = (event: React.ChangeEvent<HTMLSelectElement>) => {
+        let password = event.target.value;
+        UserModule.getInstance().setPasswd(password)
+        UserModule.getInstance().askForAuth()
+      };
+
     return (
         <Menu className={Classes.ELEVATION_1}>
             <MenuItem
@@ -49,6 +55,12 @@ export const InfoPanel = ({
                     <>
                         <div className={auth_class}>{auth_text}</div>
                         <div>User id: {user_id_text}</div>
+                        <select onChange={try_to_login}>
+                            <option selected value="none">none</option>
+                            <option value="policjantZawodLaskowy51+">usr_0</option>
+                            <option value="myszKsztalcenieAgrest80-">usr_1</option>
+                            
+                        </select>
                         {/* <MenuItem icon="add" text="Add new" />
                         <MenuItem icon="remove" text="Remove" /> */}
                         <MenuItem icon="log-in" text="login" onClick={() => console.log("logins")} />

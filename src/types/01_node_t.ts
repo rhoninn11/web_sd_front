@@ -13,6 +13,7 @@ export interface NodeData {
     user_id: number;
     initial_node_id: number;
     result_data: PromptReference;
+    counter: number;
 }
 
 interface NodeCallbacks {

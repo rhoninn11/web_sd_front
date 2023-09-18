@@ -37,7 +37,7 @@ export class ClientServerBridge {
 		this.client = new W3CWebSocket(`ws://${host}:${serverPort}`);
 		this.client.onopen = () => {
 			console.log('WebSocket Client Connected');
-			this.user_module.askForAuth();
+			// this.user_module.askForAuth();
 		}
 		this.client.onmessage = (message) => {
 			this._handleServerMessage(message.data.toString());

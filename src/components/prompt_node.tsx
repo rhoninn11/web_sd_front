@@ -24,21 +24,23 @@ import { NotificationToster } from './info_panel';
 
 
 const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
-	const { isAuthenticated } = useServerContext();
-
+	const { isAuthenticated, userId } = useServerContext();
+	
 	const [initPrompt, setInitPrompt] = useState(new promptConfig());
 	const [resultPrompt, setResultPrompt] = useState(new promptConfig());
-
+	
 	const [generated, setGenerated] = React.useState(false);
 	const [generating, setGenerating] = React.useState(false);
 	const [showOoverlay, setShowOverlay] = useState(false);
 	const [progress, setProgress] = useState(0.0);
-
+	
 	const [initImg, setInitImg] = useState(new img64());
 	const [hasInitImg, setHasInitImg] = useState(false);
 	const [resultImg, setResultImg] = useState(new img64());
 	const [hasResultImg, setHasResultImg] = useState(false);
 
+	
+	let edit_cond = isAuthenticated && data.node_data.user_id == userId;
 
 	const result_img_save2db = async (web_img64: img64) => {
 		await addDBImg(new DBImg().from(web_img64))
@@ -115,7 +117,7 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 	}
 
 	let oberlay_btn = !generated && !generating ?
-		<Button onClick={ShowPromptOverlay} disabled={generating} rightIcon="edit" intent={Intent.PRIMARY}>
+		<Button onClick={ShowPromptOverlay} disabled={generating || !edit_cond} rightIcon="edit" intent={Intent.PRIMARY}>
 			Describe
 		</Button>
 		: null
@@ -123,6 +125,9 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 
 	let startTxt2img = (prompt: promptConfig) => {
 		setShowOverlay(false);
+		if (!edit_cond)
+			return
+		
 		setResultPrompt(prompt);
 		result_prompt_save2db(prompt);
 		setGenerating(true);
@@ -146,6 +151,9 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 
 	let startImg2img = (prompt: promptConfig, img_id: number) => {
 		setShowOverlay(false);
+		if (!edit_cond)
+			return
+
 		setResultPrompt(prompt);
 		result_prompt_save2db(prompt);
 		setGenerating(true);
@@ -205,7 +213,6 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 
 
 	let display_content = <div>
-		<div> {isAuthenticated ? "authenticated" : "not authenticcated"}</div>
 		{oberlay_btn}
 		{prompt_overlay}
 		{generated_img}
@@ -217,6 +224,12 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 		NotificationToster.show({ message: elo, intent: Intent.PRIMARY })
 	}
 
+
+	const boxClasses = classNames(
+		styles.nice_box,
+		edit_cond ? styles.this_user_node : styles.other_users_node,
+	)
+
 	let bigger_handl_style = { background: '#784be8', width: "15px", height: "30px", borderRadius: "3px" };
 	return (
 		<>
@@ -227,8 +240,8 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 				onConnect={(params) => console.log('handle onConnect left', params)}
 				isConnectable={true}
 			/>
-			<div className={styles.nice_box}>
-				Stable diffusion XL txt2img
+			<div className={boxClasses}>
+				Stable diffusion XL {data.node_data.counter.toString()}
 				{display_content}
 				<MenuTest
 					prompt_text={resultPrompt.prompt}

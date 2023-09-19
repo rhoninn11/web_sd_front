@@ -4,232 +4,212 @@ import styles_shered from "./shered_styles.module.scss"
 import React, { memo, useEffect, useState } from 'react';
 import { Handle, NodeProps, Position } from 'reactflow';
 
-import { Button, Classes, Intent, ProgressBar } from '@blueprintjs/core';
+import { Button, Intent, ProgressBar } from '@blueprintjs/core';
 import { useServerContext } from './SocketProvider';
-import { ClientServerBridge } from '../logic/ClientServerBridge';
-import { PromptOverlay } from './prompt_overlay';
 
-import {  NodeConnData, PromptReference } from '../types/01_node_t';
-import { progress } from '../types/02_serv_t';
+import { NodeConnData, PromptReference } from '../types/01_node_t';
 
-import { DBImg, img2img, img64, promptConfig, txt2img } from '../types/03_sd_t';
+import { DBImg, img64, promptConfig} from '../types/03_sd_t';
 
 import { addDBImg, getDBImg, getDBNode } from '../logic/db';
 import { MenuTest } from './menu_test';
 import { UpdateNodeSync } from '../logic/UpdateNodeSync';
-import { is_prompt_empty, prompt_to_img2img, prompt_to_txt2img } from '../logic/dono_utils';
+import { generic_prompt, is_prompt_empty, start_chain } from '../logic/dono_utils';
 import classNames from 'classnames';
 import { NotificationToster } from './info_panel';
+import { RecipeOverlayWrapper } from './prompt_overlay_wrapper';
+import { MySdImg } from './Img_wrapper';
+import { set } from 'lodash';
 
 
 
 const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 	const { isAuthenticated, userId } = useServerContext();
-	
+
+	const [inited, setInited] = useState(false);
+
 	const [initPrompt, setInitPrompt] = useState(new promptConfig());
 	const [resultPrompt, setResultPrompt] = useState(new promptConfig());
-	
-	const [generated, setGenerated] = React.useState(false);
-	const [generating, setGenerating] = React.useState(false);
+	const [resultPromptFinished, setResultPromptFinished] = useState(false);
+
 	const [showOoverlay, setShowOverlay] = useState(false);
 	const [progress, setProgress] = useState(0.0);
-	
-	const [initImg, setInitImg] = useState(new img64());
-	const [hasInitImg, setHasInitImg] = useState(false);
-	const [resultImg, setResultImg] = useState(new img64());
-	const [hasResultImg, setHasResultImg] = useState(false);
 
-	
-	let edit_cond = isAuthenticated && data.node_data.user_id == userId;
+	const [initImg, setInitImg] = useState(new img64());
+	const [resultImg, setResultImg] = useState(new img64());
+	const [resultImgFinished, setResultImgFinished] = useState(false);
+
+	let is_owner = data.node_data.user_id == userId
+	let edit_cond = isAuthenticated && is_owner;
+
 
 	const result_img_save2db = async (web_img64: img64) => {
 		await addDBImg(new DBImg().from(web_img64))
-		setHasResultImg(true);
-		setResultImg(web_img64);
-
 		let db_id = parseInt(data.node_data.id);
 		UpdateNodeSync.getInstance().update_result_img(db_id, web_img64.id);
 	}
 
 	const result_prompt_save2db = async (prompt: promptConfig) => {
 		let db_id = parseInt(data.node_data.id);
-		UpdateNodeSync.getInstance().update_result_prompt(db_id, prompt);
+		UpdateNodeSync.getInstance().update_result_prompt(db_id, prompt, true);
 	}
 
-	const tryFetchResultData = async (prompt_ref: PromptReference) => {
-		setResultPrompt(prompt_ref.prompt);
 
+	// result data
+	const set_result_img = (img: img64) => {
+		setResultImgFinished(true);
+		setResultImg(img);
+	}
+
+	const try_fetch_result_img = async (img_id: number) => {
+		if (img_id == -1)
+			return new Promise<void>((resolve, reject) => resolve());
+
+		return getDBImg(img_id).then((db_img) => set_result_img(db_img.img));
+	}
+
+	const set_result_prompt = (prompt: promptConfig, finished: boolean) => {
+		setResultPrompt(prompt);
+		setResultPromptFinished(finished);
+	}
+
+	const try_fetch_result_data = (prompt_ref: PromptReference) : Promise<void> => {
+		set_result_prompt(prompt_ref.prompt, prompt_ref.prompt_finished);
 		let result_img_id = prompt_ref.prompt_img_id;
-		if (result_img_id == -1)
-			return;
-
-		await getDBImg(result_img_id).then((img) => {
-			setResultImg(img.img);
-			setHasResultImg(true);
-			setGenerated(true);
-		});
-
-		return;
+		return try_fetch_result_img(result_img_id);
 	}
 
-	const setup_sample_init_prompt = () => {
-		let sample_prompt = new promptConfig();
-		sample_prompt.prompt = "Cozy italian vilage";
-		sample_prompt.prompt_negative = "Boring sky";
-		setInitPrompt(sample_prompt);
+	// initial data
+	const set_init_img = (img: img64) => {
+		setInitImg(img);
 	}
 
-	const tryFetchInitialData = async () => {
+	const try_fetch_init_img = async (img_id: number) => {
+		if (img_id == -1)
+			return new Promise<void>((resolve, reject) => resolve());
+
+		return getDBImg(img_id).then((db_img) => set_init_img(db_img.img));
+	}
+
+	const try_fetch_initial_data = () : Promise<void> => {
 		let init_node_id = data.node_data.initial_node_id;
 		if (init_node_id == -1) {
-			setup_sample_init_prompt();
-			return;
+			setInitPrompt(generic_prompt());
+			return new Promise<void>((resolve, reject) => resolve());
 		}
 
-		await getDBNode(init_node_id)
+		return getDBNode(init_node_id)
 			.then((db_node) => {
-				let img_id = db_node.result_data.prompt_img_id;
 				setInitPrompt(db_node.result_data.prompt);
-				if (img_id == -1)
-					return;
+				return db_node.result_data.prompt_img_id;
+			})
+			.then((img_id) => try_fetch_init_img(img_id))
 
-				getDBImg(img_id).then((img) => {
-					setInitImg(img.img);
-					setHasInitImg(true);
-				});
-			});
-
-		return;
 	}
+	
 
 	useEffect(() => {
 		const fetchData = async () => {
 			let prompt_ref = data.node_data.result_data;
-			await tryFetchInitialData()
-			await tryFetchResultData(prompt_ref)
+			await try_fetch_initial_data()
+			await try_fetch_result_data(prompt_ref)
 		};
 
-		fetchData();
+		start_chain()
+			.then(() => fetchData())
+			.then(() => setInited(true))
 	}, []);
 
+	useEffect(() => {
+		const updateData = async () => {
+			let prompt_ref = data.node_data.result_data;
+			await try_fetch_result_data(prompt_ref)
+		};
+
+		if (!inited)
+			return;
+
+		start_chain()
+			.then(() => updateData())
+
+	}, [inited, data]);
+
+	const on_prompt_complete = (prompt: promptConfig) => {
+		set_result_prompt(prompt, true);
+		result_prompt_save2db(prompt);
+	}
+
+	const on_img_complete = async (web_img64: img64) => {
+		await result_img_save2db(web_img64);
+		set_result_img(web_img64);
+		setProgress(0.0);
+	}
+
+	const on_progress = (prog_val: number) => {
+		setProgress(prog_val);
+
+	}
+
+
+	//  -----------------  overlay stuff -----------------
 	let ShowPromptOverlay = () => {
 		setShowOverlay(true);
 	}
 
-	let oberlay_btn = !generated && !generating ?
-		<Button onClick={ShowPromptOverlay} disabled={generating || !edit_cond} rightIcon="edit" intent={Intent.PRIMARY}>
+	let show_btn = !resultPromptFinished
+	let oberlay_btn = show_btn ?
+		<Button onClick={ShowPromptOverlay} disabled={resultPromptFinished || !edit_cond} rightIcon="edit" intent={Intent.PRIMARY}>
 			Describe
 		</Button>
 		: null
 
 
-	let startTxt2img = (prompt: promptConfig) => {
-		setShowOverlay(false);
-		if (!edit_cond)
-			return
-		
-		setResultPrompt(prompt);
-		result_prompt_save2db(prompt);
-		setGenerating(true);
-
-		let on_gen_progress = (progr: progress) => {
-			setProgress(progr.progress.value)
-		}
-
-		let on_gen_finish = (result: txt2img) => {
-			let web_img64 = result.txt2img.bulk.img;
-			result_img_save2db(web_img64);
-
-			setGenerating(false);
-			setGenerated(true);
-			setProgress(0.0);
-		}
-
-		ClientServerBridge.getInstance()
-			.send_txt2img(prompt_to_txt2img(prompt), on_gen_progress, on_gen_finish)
-	}
-
-	let startImg2img = (prompt: promptConfig, img_id: number) => {
-		setShowOverlay(false);
-		if (!edit_cond)
-			return
-
-		setResultPrompt(prompt);
-		result_prompt_save2db(prompt);
-		setGenerating(true);
-
-		let on_gen_progress = (progr: progress) => {
-			setProgress(progr.progress.value)
-		}
-
-		let on_gen_finish = (result: img2img) => {
-			let web_img64 = result.img2img.bulk.img;
-			result_img_save2db(web_img64);
-
-			setGenerating(false);
-			setGenerated(true);
-			setProgress(0.0);
-		}
-
-		ClientServerBridge.getInstance()
-			.send_img2img(prompt_to_img2img(prompt, img_id), on_gen_progress, on_gen_finish)
-	}
-
-
 	let overlay_prompt = is_prompt_empty(resultPrompt) ? initPrompt : resultPrompt;
-	let prompt_overlay = showOoverlay ? <PromptOverlay
-		onClose={() => setShowOverlay(false)}
-		onTxt2img={startTxt2img}
-		onImg2img={startImg2img}
+	let prompt_overlay_wrap = showOoverlay ? <RecipeOverlayWrapper
 		title={'Image prompt options'}
-		init_cfg={overlay_prompt}
-		img_cfg={initImg}
-	/>
-		: null
-
-
-
-	let progress_bar = generating ?
-		<ProgressBar value={progress} />
-		: null;
-
-
-
-	const classes_img_preview = classNames(
-		styles_shered.smaller_img,
-		Classes.SKELETON,
-	)
-	const classes_img = classNames(
-		styles_shered.smaller_img,
-		styles_shered.prettier_img,
-	);
-
-	let img_preview = generating ? <div className={classes_img_preview} /> : null
-	let generated_img = generated ?
-		<img className={classes_img}
-			src={resultImg.img64} />
-		: img_preview;
-
-
-
-	let display_content = <div>
-		{oberlay_btn}
-		{prompt_overlay}
-		{generated_img}
-		{progress_bar}
-	</div>
+		on_close={() => setShowOverlay(false)}
+		on_progress={on_progress}
+		on_img_complete={on_img_complete}
+		on_prompt_complete={on_prompt_complete}
+		ovelay_prompt={overlay_prompt}
+		overlay_img={initImg}
+		edit_cond={edit_cond}
+	/> : null
 
 	const add_notification = (title: string, msg: string) => {
 		const elo = <div><b>{title}</b>: {msg}</div>
 		NotificationToster.show({ message: elo, intent: Intent.PRIMARY })
 	}
 
+	let help_menu = <MenuTest
+		prompt={overlay_prompt}
+		copied={add_notification}
+		refresh={async () => {
+			await try_fetch_initial_data()
+		}} />
+
+	let show_progress_bar = resultPromptFinished && !resultImgFinished && edit_cond;
+	let progress_bar = show_progress_bar ? <ProgressBar value={progress} /> : null;
+
+	let show_image = resultImgFinished || resultPromptFinished;
+	console.log("show_image, hasResult img", show_image, resultImgFinished)
+	let generated_img_alt = <MySdImg img_64={resultImg} show={show_image} complete={resultImgFinished} />
+
+	let display_content = <div>
+		{oberlay_btn}
+		{prompt_overlay_wrap}
+		{generated_img_alt}
+		{progress_bar}
+		{help_menu}
+	</div>
+	let update_info = !edit_cond ? <div> info: {data.node_data.counter.toString()}</div> : null
+
 
 	const boxClasses = classNames(
 		styles.nice_box,
 		edit_cond ? styles.this_user_node : styles.other_users_node,
 	)
-
+	
 	let bigger_handl_style = { background: '#784be8', width: "15px", height: "30px", borderRadius: "3px" };
 	return (
 		<>
@@ -241,15 +221,10 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 				isConnectable={true}
 			/>
 			<div className={boxClasses}>
-				Stable diffusion XL {data.node_data.counter.toString()}
+				Stable diffusion XL
+				{update_info}
 				{display_content}
-				<MenuTest
-					prompt_text={resultPrompt.prompt}
-					prompt_neg_text={resultPrompt.prompt_negative}
-					copied={add_notification}
-					refresh={async () => {
-						await tryFetchInitialData()
-					}} />
+
 			</div>
 			<Handle
 				type="source"

@@ -40,6 +40,7 @@ import { DBImg } from '../types/03_sd_t';
 import { UserModule } from '../logic/UserModule';
 import { InfoPanel } from './info_panel';
 import { FlowOps } from '../types/00_flow_t';
+import { start_chain } from '../logic/dono_utils';
 
 const nodeTypes = {
 	prompt: PromptNode,
@@ -114,7 +115,7 @@ const AddNodeOnEdgeDrop = () => {
 
 	let add_node: nodeCreateWCb = async (db_node: DBNode, cb: () => void | undefined) => {
 		let _flow_node = node_db2flow(db_node);
-		if(userId >= 0 && db_node.user_id == userId){
+		if (userId >= 0 && db_node.user_id == userId) {
 			_flow_node.draggable = true;
 		}
 		setNodes((nds) => nds.concat(_flow_node));
@@ -128,9 +129,7 @@ const AddNodeOnEdgeDrop = () => {
 		setNodes((nds) => nds.map((node) => {
 			if (node.id == db_node.id.toString()) {
 				let _flow_node = node_db2flow(db_node);
-				if(userId >= 0 && db_node.user_id == userId){
-					_flow_node.draggable = true;
-				}
+				_flow_node.data = { ..._flow_node.data }
 				return _flow_node;
 			}
 			return node;
@@ -306,6 +305,7 @@ const AddNodeOnEdgeDrop = () => {
 		let chain = new Promise<number>((resolve, reject) => {
 			ClientServerBridge.getInstance()
 				.sync_with_server(sync_data_in, (sync_data_out) => {
+					console.log("+HUB+ serv returned TS_INFO")
 					if (sync_data_out.sync_op != syncOps.INFO)
 						return;
 
@@ -329,16 +329,16 @@ const AddNodeOnEdgeDrop = () => {
 			simple_node.timestamp = node.timestamp;
 			return simple_node;
 		})
-	
 		sync_data_in.fill_data(simple_nodes, [], []);
-		console.log("sync_data_in", sync_data_in);
+
 
 		let chain = new Promise<number>((resolve, reject) => {
 			ClientServerBridge.getInstance()
 				.sync_timestump_with_server(sync_data_in, (sync_data_out) => {
+					console.log("+HUB+ serv returned TS_INFO")
 					if (sync_data_out.sync_op != syncOps.INFO_TS)
 						return;
-					
+
 					// server just returned id list
 					sync_client_ts_with_server(sync_data_out, nodes.length)
 						.then(() => resolve(nodes.length));
@@ -349,11 +349,6 @@ const AddNodeOnEdgeDrop = () => {
 	}
 
 	// chains
-	const start_chain = () => {
-		return new Promise<void>((resolve, reject) => resolve())
-	}
-
-
 	const sync_client_with_server = (s_sygn: syncSignature, client_node_num: number) => {
 		let { node_id_arr, edge_id_arr, img_id_arr } = s_sygn;
 		console.log(" +ISYNC+ node_id_arr", node_id_arr);
@@ -407,6 +402,20 @@ const AddNodeOnEdgeDrop = () => {
 				if (node_num_data == 0)
 					create_first_node();
 			})
+			// .then(() => {
+			// 	setInterval(() => {
+			// 		setNodes((nds) => {
+			// 			return nds.map((node) => {
+			// 				let flow_node = node as FlowNode;
+			// 				if (flow_node.data.node_data.user_id == user_id_data){
+			// 					flow_node.data = { ...flow_node.data }
+			// 					flow_node.data.node_data.counter += 1;
+			// 				}
+			// 				return flow_node;
+			// 			})
+			// 		})
+			// 	}, 1000)
+			// })
 	}, []);
 
 

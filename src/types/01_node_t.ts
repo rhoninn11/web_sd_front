@@ -5,6 +5,7 @@ import { promptConfig } from "./03_sd_t";
 
 export class PromptReference {
     prompt: promptConfig = new promptConfig();
+    prompt_finished: boolean = false;
     prompt_img_id: number = -1;
 }
 

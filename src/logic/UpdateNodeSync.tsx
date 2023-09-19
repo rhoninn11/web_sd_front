@@ -168,17 +168,18 @@ export class UpdateNodeSync {
         this.run_update_and_reduce(id);
     }
 
-    private _update_result_prompt = async (id: number, prompt: promptConfig) => {
+    private _update_result_prompt = async (id: number, prompt: promptConfig, finished: boolean) => {
         return getDBNode(id).then(async (db_node) => {
             db_node.result_data.prompt = prompt;
+            db_node.result_data.prompt_finished = finished;
             await editDBNode(db_node.id, db_node);
             return;
         });
     }
 
-    public update_result_prompt(id: number, prompt: promptConfig) {
+    public update_result_prompt(id: number, prompt: promptConfig, finished: boolean) {
         let queue = this.get_update_struct_safe(id)
-        queue.update_queue.push(() => this._update_result_prompt(id, prompt));
+        queue.update_queue.push(() => this._update_result_prompt(id, prompt, finished));
         this.run_update_and_reduce(id);
     }
 }

@@ -33,3 +33,14 @@ export const prompt_to_img2img = (prompt: promptConfig, image_id: number): img2i
 export const is_prompt_empty = (prompt: promptConfig): boolean => {
     return prompt.prompt === '' && prompt.prompt_negative === '';
 }
+
+export const start_chain = () => {
+    return new Promise<void>((resolve, reject) => resolve())
+}
+
+export const generic_prompt = () => {
+    let sample_prompt = new promptConfig();
+    sample_prompt.prompt = "Cozy italian vilage";
+    sample_prompt.prompt_negative = "Boring sky";
+    return sample_prompt;
+}

@@ -9,7 +9,7 @@ import { useState } from "react";
 
 import { textAreaEditor } from "../logic/editor-helper";
 import { img2img, img64, promptConfig, txt2img } from "../types/03_sd_t";
-import { progress } from "../types/02_serv_t";
+import { mtdta_JSON_id, progress } from "../types/02_serv_t";
 import { PromptOverlay } from "./prompt_overlay";
 import { ClientServerBridge } from "../logic/ClientServerBridge";
 import { prompt_to_img2img, prompt_to_txt2img } from "../logic/dono_utils";
@@ -20,7 +20,7 @@ interface RecipeOverlayWrapperProps {
     title: string;
     on_close: () => void;
     on_progress: (prog_val: number) => void;
-    on_img_complete: (web_img64: img64) => void;
+    on_img_complete: (web_img64: img64, user_id: number) => void;
     on_prompt_complete: (prompt: promptConfig) => void;
     ovelay_prompt: promptConfig;
     overlay_img: img64;
@@ -45,15 +45,18 @@ export const RecipeOverlayWrapper = ({
 		on_progress(progr.progress.value);
 	}
 
-
 	const on_txt2img_generation_finish = (result: txt2img) => {
 		let web_img64 = result.txt2img.bulk.img;
-		on_img_complete(web_img64)
+        let metadata_id = result.txt2img.metadata.id;
+        let decoded: mtdta_JSON_id = JSON.parse(metadata_id);
+		on_img_complete(web_img64, decoded.user_id)
 	}
 	const on_img2img_generation_finish = (result: img2img) => {
 		let web_img64 = result.img2img.bulk.img;
+        let metadata_id = result.img2img.metadata.id;
+        let decoded: mtdta_JSON_id = JSON.parse(metadata_id);
+		on_img_complete(web_img64, decoded.user_id)
     }
-		
 
 	let startTxt2img = (prompt: promptConfig) => {
 		on_close();

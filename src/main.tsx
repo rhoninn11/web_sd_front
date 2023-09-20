@@ -9,15 +9,11 @@ import '@blueprintjs/icons/lib/css/blueprint-icons.css';
 import '@blueprintjs/select/lib/css/blueprint-select.css';
 import '@blueprintjs/table/lib/css/table.css';
 import { init_processors } from './logic/request_processing/00_init';
-import { fix_initial_node } from './tests/fix_first_node';
 import { ClientServerBridge } from './logic/ClientServerBridge';
 
 init_processors();
 ClientServerBridge.getInstance();
-
-// document.addEventListener('keydown', (event) => {
-//     console.log(`Key pressed: ${event.key}, COde: ${event.code}`);
-// });
+console.log('+++ ClientServerBridge.getInstance()');
 
 ReactDOM.render(
     <React.StrictMode>

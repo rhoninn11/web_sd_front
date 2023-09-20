@@ -23,6 +23,7 @@ export class ClientServerBridge {
 	private req_proc: ProcessorRepository;
 	private user_module: UserModule;
 	private client: W3CWebSocket | null = null;
+	private connected = false;
 	
 
 	private constructor() {
@@ -30,24 +31,36 @@ export class ClientServerBridge {
 		this.user_module = UserModule.getInstance();
 	}
 
-	private _init() {
+	public isConnected() {
+		return this.connected;
+	}
+
+	private _init(port: number) {
 		// get host name from web bar
-		console.log('+++ init ClientServerBridge');
 		let host = window.location.hostname;
-		this.client = new W3CWebSocket(`ws://${host}:${serverPort}`);
+		const connect_string = `ws://${host}:${port}`;
+		console.log('+++ connecting to: ', connect_string);
+		this.client = new W3CWebSocket(connect_string);
 		this.client.onopen = () => {
 			console.log('WebSocket Client Connected');
-			// this.user_module.askForAuth();
+			this.connected = true;
 		}
 		this.client.onmessage = (message) => {
 			this._handleServerMessage(message.data.toString());
+		}
+		this.client.onerror = (error) => {
+			console.log("Connection Error: " + error.toString());
+		}
+		this.client.onclose = () => {
+			this.connected = false;
 		}
 	}
 
 	public static getInstance(): ClientServerBridge {
 		if (!ClientServerBridge.instance) {
 			ClientServerBridge.instance = new ClientServerBridge();
-			ClientServerBridge.instance._init();
+			let port = parseInt(window.location.port);
+			ClientServerBridge.instance._init(port);
 		}
 
 		return ClientServerBridge.instance;

@@ -8,9 +8,6 @@ import { ProcessorRepository } from './request_processing/RequestProcessor';
 import { serverRequest, authData } from '../types/02_serv_t';
 import { v4 as uuid } from 'uuid';
 
-
-const serverPort = 8700;
-
 export class UserModule {
 
 	private static instance: UserModule;

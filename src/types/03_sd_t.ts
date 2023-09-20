@@ -39,6 +39,7 @@ export class img2img {
 
 export class DBImg {
     id: number = -1;
+    user_id: number = -1;
     img: img64 = new img64();
 
     from(img: img64){

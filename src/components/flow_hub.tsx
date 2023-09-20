@@ -20,7 +20,7 @@ import { PromptNode } from './prompt_node';
 import { PromptEdge } from './prompt_edge';
 
 
-import { addDBNode, addDBEdge, getAllDBEdges, getAllDBNodes, getDBNode, editDBNode, getAllDBImgIds, addDBImg } from '../logic/db';
+import { addDBNode, addDBEdge, getAllDBEdges, getAllDBNodes, getDBNode, editDBNode, getAllDBImgIds, addDBImg, getDBEdge, getDBImg } from '../logic/db';
 import { edge_db2flow, node_db2flow } from '../logic/convert_utils';
 import { ClientServerBridge } from '../logic/ClientServerBridge';
 
@@ -29,17 +29,15 @@ import { moveCB } from '../tests/canvas_move_test';
 
 import { MoveObserver } from '../tests/canvas_move_test';
 import { syncOps, syncSignature } from '../types/02_serv_t';
-import { DBNode, FlowNode, NodeConnData, PromptReference, ServerNode } from '../types/01_node_t';
-import { DBEdge, EdgeStyle, FlowEdge, ServerEdge } from '../types/04_edge_t';
-import { send_client_data_to_serveer } from '../tests/sync_server_w_client_data';
-import _, { flow, set } from 'lodash';
+import { DBNode, FlowNode, PromptReference} from '../types/01_node_t';
+import { DBEdge } from '../types/04_edge_t';
+import _  from 'lodash';
 import { UpdateNodeSync } from '../logic/UpdateNodeSync';
 import { sync_client_nodes_with_server, sync_client_edges_with_server, sync_client_img_with_server } from '../logic/ServerSyncREalated';
 import { edgeCreateWCb, imgCreateCb, nodeCreateWCb } from '../types/types_db';
 import { DBImg } from '../types/03_sd_t';
 import { UserModule } from '../logic/UserModule';
 import { InfoPanel } from './info_panel';
-import { FlowOps } from '../types/00_flow_t';
 import { start_chain } from '../logic/dono_utils';
 
 const nodeTypes = {
@@ -77,6 +75,8 @@ const AddNodeOnEdgeDrop = () => {
 	const [validUser, setValidUser] = useState(false);
 	const [userId, setUserId] = useState(-1);
 
+	const [synced, setSynced] = useState(false);
+
 	const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), []);
 
 	const get_prompt_ref = (id: string) => {
@@ -106,12 +106,7 @@ const AddNodeOnEdgeDrop = () => {
 	}, [validUser])
 
 	// node
-	let node_route: nodeCreateWCb = async (db_node: DBNode, cb: () => void | undefined) => {
-		if (db_node.node_op == FlowOps.CREATE)
-			await add_node(db_node, cb);
-		else if (db_node.node_op == FlowOps.UPDATE)
-			await edit_node(db_node, cb);
-	}
+
 
 	let add_node: nodeCreateWCb = async (db_node: DBNode, cb: () => void | undefined) => {
 		let _flow_node = node_db2flow(db_node);
@@ -150,11 +145,17 @@ const AddNodeOnEdgeDrop = () => {
 		await editDBNode(db_node_edit.id, db_node_edit);
 		edit_flow_node(db_node_edit)
 		if (cb) cb();
-
 	}
 
 	//edge
 	let add_edge: edgeCreateWCb = async (db_edge: DBEdge, cb: () => void | undefined) => {
+		console.log("!!! node edit")
+		let existing_edge = await getDBEdge(db_edge.id);
+		if (!existing_edge)
+			return await _add_edge(db_edge, cb);
+	}
+
+	let _add_edge: edgeCreateWCb = async (db_edge: DBEdge, cb: () => void | undefined) => {
 		console.log("!!!add_edge", db_edge)
 		let _flow_edge = edge_db2flow(db_edge);
 		setEdges((eds) => eds.concat(_flow_edge));
@@ -165,6 +166,12 @@ const AddNodeOnEdgeDrop = () => {
 
 	//img
 	let add_img: imgCreateCb = async (db_img: DBImg, cb: () => void | undefined) => {
+		let existing_img = await getDBImg(db_img.id)
+		if (!existing_img)
+			return await _add_img(db_img, cb);
+	}
+
+	let _add_img: imgCreateCb = async (db_img: DBImg, cb: () => void | undefined) => {
 		await addDBImg(db_img);
 		if (cb) cb();
 	}
@@ -299,10 +306,10 @@ const AddNodeOnEdgeDrop = () => {
 		let sync_data_in = new syncSignature()
 		sync_data_in.sync_op = syncOps.INFO;
 
-		let { nodes, edges, imgs } = local_data;
+		const { nodes, edges, imgs } = local_data;
 		sync_data_in.fill_ids(nodes, edges, imgs);
 
-		let chain = new Promise<number>((resolve, reject) => {
+		const chain = new Promise<number>((resolve, reject) => {
 			ClientServerBridge.getInstance()
 				.sync_with_server(sync_data_in, (sync_data_out) => {
 					console.log("+HUB+ serv returned TS_INFO")
@@ -310,8 +317,9 @@ const AddNodeOnEdgeDrop = () => {
 						return;
 
 					// server just returned id list
-					sync_client_with_server(sync_data_out, nodes.length)
-						.then((new_node_num) => resolve(new_node_num));
+					const node_num = nodes.length + sync_data_out.node_id_arr.length;
+					sync_client_with_server(sync_data_out)
+						.then(() => resolve(node_num));
 				});
 		});
 
@@ -319,8 +327,9 @@ const AddNodeOnEdgeDrop = () => {
 	}
 
 	const inialTimestepServerSync = async () => {
+		const sync_op = syncOps.INFO_TS;
 		let sync_data_in = new syncSignature()
-		sync_data_in.sync_op = syncOps.INFO_TS;
+		sync_data_in.sync_op = sync_op;
 
 		let nodes = await getAllDBNodes();
 		let simple_nodes = nodes.map((node) => {
@@ -331,16 +340,15 @@ const AddNodeOnEdgeDrop = () => {
 		})
 		sync_data_in.fill_data(simple_nodes, [], []);
 
-
 		let chain = new Promise<number>((resolve, reject) => {
 			ClientServerBridge.getInstance()
 				.sync_timestump_with_server(sync_data_in, (sync_data_out) => {
 					console.log("+HUB+ serv returned TS_INFO")
-					if (sync_data_out.sync_op != syncOps.INFO_TS)
+					if (sync_data_out.sync_op != sync_op)
 						return;
 
 					// server just returned id list
-					sync_client_ts_with_server(sync_data_out, nodes.length)
+					sync_client_ts_with_server(sync_data_out)
 						.then(() => resolve(nodes.length));
 				});
 		});
@@ -348,8 +356,40 @@ const AddNodeOnEdgeDrop = () => {
 		return chain;
 	}
 
+	let sync_sygn_empty = (s_sygn :syncSignature): boolean => {
+		let cond = s_sygn.node_id_arr.length == 0 && s_sygn.edge_id_arr.length == 0 && s_sygn.img_id_arr.length == 0;
+		return cond
+	}
+
+	const RtServerSync = async () => {
+		const sync_op = syncOps.RT_SYNC;
+		let sync_data_in = new syncSignature()
+		sync_data_in.sync_op = sync_op;
+
+		const chain = new Promise<number>((resolve, reject) => {
+			ClientServerBridge.getInstance()
+				.sync_with_server(sync_data_in, (sync_data_out) => {
+					console.log("+HUB+ serv returned RT_SYNC")
+					if (sync_data_out.sync_op != sync_op)
+						return;
+
+					console.log(" +ISYNC+ node_id_arr", sync_data_out);
+					if(sync_sygn_empty(sync_data_out)){
+						resolve(0);
+						return;
+					}
+					// server just returned id list
+					let node_num = nodes.length + sync_data_out.node_id_arr.length;
+					sync_client_with_server(sync_data_out)
+						.then(() => resolve(node_num));
+				});
+		});
+
+		return chain;
+	}
+
 	// chains
-	const sync_client_with_server = (s_sygn: syncSignature, client_node_num: number) => {
+	const sync_client_with_server = (s_sygn: syncSignature) => {
 		let { node_id_arr, edge_id_arr, img_id_arr } = s_sygn;
 		console.log(" +ISYNC+ node_id_arr", node_id_arr);
 		console.log(" +ISYNC+ edge_id_arr", edge_id_arr);
@@ -357,19 +397,18 @@ const AddNodeOnEdgeDrop = () => {
 
 		let sync_chain = start_chain()
 			.then(() => sync_client_img_with_server(img_id_arr, add_img))
-			.then(() => sync_client_nodes_with_server(node_id_arr, add_node))
 			.then(() => sync_client_edges_with_server(edge_id_arr, add_edge))
+			.then(() => sync_client_nodes_with_server(node_id_arr, edit_node))
 			.then(() => console.log('+INFO+ server synced'))
-			.then(() => node_id_arr.length + client_node_num);
 
 		return sync_chain;
 	}
 
-	const sync_client_ts_with_server = (s_sygn: syncSignature, client_node_num: number) => {
+	const sync_client_ts_with_server = (s_sygn: syncSignature) => {
 		let { node_id_arr } = s_sygn;
 		console.log(" +ITSSYNC+ node_data_arr", node_id_arr);
 		let sync_chain = start_chain()
-			.then(() => sync_client_nodes_with_server(node_id_arr, node_route))
+			.then(() => sync_client_nodes_with_server(node_id_arr, edit_node))
 			.then(() => console.log('+INFO+ timpestump server synced'))
 
 		return sync_chain;
@@ -401,7 +440,7 @@ const AddNodeOnEdgeDrop = () => {
 				setAllowCreate(true)
 				if (node_num_data == 0)
 					create_first_node();
-			})
+			}).then(() => setSynced(true))
 			// .then(() => {
 			// 	setInterval(() => {
 			// 		setNodes((nds) => {
@@ -417,6 +456,25 @@ const AddNodeOnEdgeDrop = () => {
 			// 	}, 1000)
 			// })
 	}, []);
+
+	const rt_sync_loop = () => {
+
+		console.log("!!! RT SYNC (loop started)!!!")
+		RtServerSync().then((node_num) => {
+			console.log("!!! RT SYNC (loop finished)!!!")
+			let update_time = 1000;
+			if (node_num > 0)
+				update_time = 0;
+			setTimeout(() => rt_sync_loop(), update_time);
+		})
+	}
+
+	useEffect(() => {
+		if(synced){
+			console.log("!!! RT SYNC !!!")
+			setTimeout(rt_sync_loop, 0);
+		}
+	}, [synced])
 
 
 	const move_obs = MoveObserver.getInstance();

@@ -43,8 +43,10 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 	let edit_cond = isAuthenticated && is_owner;
 
 
-	const result_img_save2db = async (web_img64: img64) => {
-		await addDBImg(new DBImg().from(web_img64))
+	const result_img_save2db = async (web_img64: img64, user_id: number) => {
+		let new_db_img = new DBImg().from(web_img64);
+		new_db_img.user_id = user_id;
+		await addDBImg(new_db_img);
 		let db_id = parseInt(data.node_data.id);
 		UpdateNodeSync.getInstance().update_result_img(db_id, web_img64.id);
 	}
@@ -139,8 +141,8 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 		result_prompt_save2db(prompt);
 	}
 
-	const on_img_complete = async (web_img64: img64) => {
-		await result_img_save2db(web_img64);
+	const on_img_complete = async (web_img64: img64, user_id: number) => {
+		await result_img_save2db(web_img64, user_id);
 		set_result_img(web_img64);
 		setProgress(0.0);
 	}
@@ -192,7 +194,6 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 	let progress_bar = show_progress_bar ? <ProgressBar value={progress} /> : null;
 
 	let show_image = resultImgFinished || resultPromptFinished;
-	console.log("show_image, hasResult img", show_image, resultImgFinished)
 	let generated_img_alt = <MySdImg img_64={resultImg} show={show_image} complete={resultImgFinished} />
 
 	let display_content = <div>

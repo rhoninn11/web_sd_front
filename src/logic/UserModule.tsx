@@ -95,6 +95,7 @@ export class UserModule {
 
 	public setAuthenticatedSetter = (setter: (suth: boolean) => void) => {
 		this.isAuthenticatedSetter = setter;
+		this.isAuthenticatedSetter(this.auth);
 	}
 
 	public setUserId = (setter: (suth: number) => void) => {

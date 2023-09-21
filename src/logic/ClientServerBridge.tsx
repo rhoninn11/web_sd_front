@@ -31,6 +31,19 @@ export class ClientServerBridge {
 		this.user_module = UserModule.getInstance();
 	}
 
+	
+	private isConnectedSetter: (connected: boolean) => void = () => { };
+	
+	public setConnectedSetter = (setter: (connnected: boolean) => void) => {
+		this.isConnectedSetter = setter;
+		this.isConnectedSetter(this.connected);
+	}
+
+	private _setIsConnected = (isConnected: boolean) => {
+		this.connected = isConnected;
+		this.isConnectedSetter(isConnected);
+	}
+	
 	public isConnected() {
 		return this.connected;
 	}
@@ -42,24 +55,28 @@ export class ClientServerBridge {
 		console.log('+++ connecting to: ', connect_string);
 		this.client = new W3CWebSocket(connect_string);
 		this.client.onopen = () => {
-			console.log('WebSocket Client Connected');
-			this.connected = true;
+			console.log('+++ Client Connected');
+			this._setIsConnected(true)
 		}
 		this.client.onmessage = (message) => {
 			this._handleServerMessage(message.data.toString());
 		}
 		this.client.onerror = (error) => {
-			console.log("Connection Error: " + error.toString());
+			console.log("!!! Connection Error: ", error.toString());
 		}
+
 		this.client.onclose = () => {
-			this.connected = false;
+			console.log('--- Client Closed');
+			this._setIsConnected(false)
+			setTimeout(() => this._init(port), 500);
 		}
 	}
 
 	public static getInstance(): ClientServerBridge {
 		if (!ClientServerBridge.instance) {
 			ClientServerBridge.instance = new ClientServerBridge();
-			let port = parseInt(window.location.port);
+			let port = serverPort;
+			// let port = parseInt(window.location.port);
 			ClientServerBridge.instance._init(port);
 		}
 

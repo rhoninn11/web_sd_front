@@ -1,8 +1,10 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { UserModule } from '../logic/UserModule';
+import { ClientServerBridge } from '../logic/ClientServerBridge';
 
 export interface ServerContextType {
 	isAuthenticated: boolean;
+	isConnected: boolean;
 	userId: number;
 }
 
@@ -10,16 +12,20 @@ const ServerContext = createContext<ServerContextType | undefined>(undefined);
 
 export const ServerContextProvider: React.FC = ({ children }) => {
 	const [isAuthenticated, setIsAuthenticated] = useState(false);
+	const [isConnected, setIsConnected] = useState(false);
 	const [userId, setUserId] = useState<number>(-1)
 
 	useEffect(() => {
-		const client = UserModule.getInstance();
-		client.setAuthenticatedSetter(setIsAuthenticated);
-		client.setUserId(setUserId);
+		const user_module_instance = UserModule.getInstance();
+		user_module_instance.setAuthenticatedSetter(setIsAuthenticated);
+		user_module_instance.setUserId(setUserId);
+
+		const bridge_instance = ClientServerBridge.getInstance();
+		bridge_instance.setConnectedSetter(setIsConnected);
 	}, []);
 
 	return (
-		<ServerContext.Provider value={{isAuthenticated, userId}}>
+		<ServerContext.Provider value={{isAuthenticated, userId, isConnected}}>
 			{children}
 		</ServerContext.Provider>
 	);

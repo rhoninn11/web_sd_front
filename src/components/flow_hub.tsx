@@ -39,6 +39,7 @@ import { DBImg } from '../types/03_sd_t';
 import { UserModule } from '../logic/UserModule';
 import { InfoPanel } from './info_panel';
 import { start_chain } from '../logic/dono_utils';
+import { useServerContext } from './SocketProvider';
 
 const nodeTypes = {
 	prompt: PromptNode,
@@ -76,6 +77,8 @@ const AddNodeOnEdgeDrop = () => {
 	const [userId, setUserId] = useState(-1);
 
 	const [synced, setSynced] = useState(false);
+
+	const {isConnected, isAuthenticated} = useServerContext();
 
 	const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), []);
 
@@ -254,10 +257,7 @@ const AddNodeOnEdgeDrop = () => {
 		let db_nodes = await getAllDBNodes()
 		let db_edges = await getAllDBEdges()
 
-		let flow_nodes = db_nodes.map(node_db2flow)
-		let flow_edges = db_edges.map(edge_db2flow)
-		setNodes(flow_nodes);
-		setEdges(flow_edges);
+		
 
 		// just id fetch, meaby faser then all bulk data fetch idono
 		let imgIds = (await getAllDBImgIds()).map((id) => {
@@ -274,6 +274,14 @@ const AddNodeOnEdgeDrop = () => {
 
 		return all_data;
 	};
+
+	const setFlow = (allData: AllData) => {
+		const {nodes, edges} = allData;
+		const flow_nodes = nodes.map(node_db2flow)
+		const flow_edges = edges.map(edge_db2flow)
+		setNodes(flow_nodes);
+		setEdges(flow_edges);
+	}
 
 	// init step 2
 	const auth_check_async_loop = (on_auth: () => void, retry_time: number) => {
@@ -430,6 +438,7 @@ const AddNodeOnEdgeDrop = () => {
 		start_chain()
 			.then(() => fetchData())
 			.then((data) => local_data = data)
+			.then(() => setFlow(local_data))
 			.then(checkAuth)
 			.then((user_id) => user_id_data = user_id)
 			.then(() => initialServerSync(local_data))
@@ -441,21 +450,15 @@ const AddNodeOnEdgeDrop = () => {
 				if (node_num_data == 0)
 					create_first_node();
 			}).then(() => setSynced(true))
-			// .then(() => {
-			// 	setInterval(() => {
-			// 		setNodes((nds) => {
-			// 			return nds.map((node) => {
-			// 				let flow_node = node as FlowNode;
-			// 				if (flow_node.data.node_data.user_id == user_id_data){
-			// 					flow_node.data = { ...flow_node.data }
-			// 					flow_node.data.node_data.counter += 1;
-			// 				}
-			// 				return flow_node;
-			// 			})
-			// 		})
-			// 	}, 1000)
-			// })
+
 	}, []);
+
+
+	useEffect(() => {
+		if(isConnected) {
+			console.log("+++ from flow_hub: connected")
+		}
+	}, [isAuthenticated, isConnected])
 
 	const rt_sync_loop = () => {
 

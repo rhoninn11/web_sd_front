@@ -7,7 +7,7 @@ import { Handle, NodeProps, Position } from 'reactflow';
 import { Button, Intent, ProgressBar } from '@blueprintjs/core';
 import { useServerContext } from './SocketProvider';
 
-import { NodeConnData, PromptReference } from '../types/01_node_t';
+import { ImageType, NodeConnData, PromptReference } from '../types/01_node_t';
 
 import { DBImg, img64, promptConfig} from '../types/03_sd_t';
 
@@ -43,17 +43,18 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 	let edit_cond = isAuthenticated && is_owner;
 
 
-	const result_img_save2db = async (web_img64: img64, user_id: number) => {
+	const result_img_save2db = async (web_img64: img64, user_id: number, img_type: ImageType) => {
 		let new_db_img = new DBImg().from(web_img64);
 		new_db_img.user_id = user_id;
 		await addDBImg(new_db_img);
 		let db_id = parseInt(data.node_data.id);
-		UpdateNodeSync.getInstance().update_result_img(db_id, web_img64.id);
+		UpdateNodeSync.getInstance().update_result_img(db_id, web_img64.id, img_type);
 	}
 
 	const result_prompt_save2db = async (prompt: promptConfig) => {
-		let db_id = parseInt(data.node_data.id);
-		UpdateNodeSync.getInstance().update_result_prompt(db_id, prompt, true);
+		let node_db_id = parseInt(data.node_data.id);
+		UpdateNodeSync.getInstance().update_result_prompt(node_db_id, prompt, true);
+		return node_db_id;
 	}
 
 
@@ -138,11 +139,11 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 
 	const on_prompt_complete = (prompt: promptConfig) => {
 		set_result_prompt(prompt, true);
-		result_prompt_save2db(prompt);
+		return result_prompt_save2db(prompt);
 	}
 
-	const on_img_complete = async (web_img64: img64, user_id: number) => {
-		await result_img_save2db(web_img64, user_id);
+	const on_img_complete = async (web_img64: img64, user_id: number, img_type: ImageType) => {
+		await result_img_save2db(web_img64, user_id, img_type);
 		set_result_img(web_img64);
 		setProgress(0.0);
 	}
@@ -180,7 +181,7 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 
 	const add_notification = (title: string, msg: string) => {
 		const elo = <div><b>{title}</b>: {msg}</div>
-		NotificationToster.show({ message: elo, intent: Intent.PRIMARY })
+		NotificationToster.show({ message: elo, intent: Intent.NONE })
 	}
 
 	let help_menu = <MenuTest
@@ -188,7 +189,8 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 		copied={add_notification}
 		refresh={async () => {
 			await try_fetch_initial_data()
-		}} />
+		}}
+		imgType={data.node_data.result_data.prompt_img_type} />
 
 	let show_progress_bar = resultPromptFinished && !resultImgFinished && edit_cond;
 	let progress_bar = show_progress_bar ? <ProgressBar value={progress} /> : null;
@@ -203,8 +205,6 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 		{progress_bar}
 		{help_menu}
 	</div>
-	let update_info = !edit_cond ? <div> info: {data.node_data.counter.toString()}</div> : null
-
 
 	const boxClasses = classNames(
 		styles.nice_box,
@@ -223,7 +223,6 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 			/>
 			<div className={boxClasses}>
 				Stable diffusion XL
-				{update_info}
 				{display_content}
 
 			</div>

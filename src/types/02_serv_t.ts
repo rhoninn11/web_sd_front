@@ -88,9 +88,11 @@ export class syncSignature {
 export class mtdta_JSON_id {
     uuid: string = '';
     user_id: number = -1;
+    node_id: number = -1;
 
-    constructor(uuid: string, user_id: number){
+    constructor(uuid: string, user_id: number, node_id: number){
         this.uuid = uuid;
         this.user_id = user_id;
+        this.node_id = node_id;
     }
 }

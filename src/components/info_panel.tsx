@@ -14,11 +14,7 @@ export const InfoPanel = ({
     children,
 }: InfoPanelProps) => {
 
-    const {isAuthenticated, isConnected, userId } = useServerContext();
-
-    const [auth, setAuth] = useState(false)
-    const [user_id, setUserId] = useState('')
-    const [connected, setConnected] = useState(false);
+    const { isAuthenticated, isConnected, userId } = useServerContext();
 
     let auth_text = isAuthenticated ? 'Authenticated' : 'Not authenticated'
     let auth_class = isAuthenticated ? styles_shered.grean_text : styles_shered.red_text;
@@ -28,35 +24,29 @@ export const InfoPanel = ({
 
     let user_id_text = isAuthenticated ? userId : '---'
 
-    const try_to_login = (event: React.ChangeEvent<HTMLSelectElement>) => {
-
-        console.log("try_to_login", isConnected)
-        if (!isConnected){
+    const login = (password: string) => {
+        if (!isConnected) {
             return;
         }
 
-        let password = event.target.value;
         UserModule.getInstance().setPasswd(password)
         UserModule.getInstance().askForAuth()
     };
-
-    console.log("InfoPanel", isConnected)
+    let dev = import.meta.env.DEV;
+    let login_option = dev
+        ? <DevPasswordInput on_login={login} />
+        : <PasswordInput on_login={login} isAuthenticated={isAuthenticated}/>
 
     return (
         <div className={Classes.ELEVATION_1} style={{ padding: "10px" }}>
             <div className={connect_class}>{connect_text}</div>
             <div className={auth_class}>{auth_text}</div>
             <div>User id: {user_id_text}</div>
-            <select onChange={try_to_login}>
-                <option selected value="none">none</option>
-                <option value="policjantZawodLaskowy51+">usr_0</option>
-                <option value="myszKsztalcenieAgrest80-">usr_1</option>
-                <option value="zukInternetBak39.">usr_2</option>
-                <option value="muzeumRurkaPapier40,">usr_3</option>
-                <option value="filmMyszkaKomputer18+">usr_4</option>
-                <option value="uczenJeziorakKoce36,">usr_5</option>
+            {login_option}
 
-            </select>
+
+
+
         </div>
     );
 };
@@ -64,6 +54,8 @@ export const InfoPanel = ({
 import { OverlayToaster } from "@blueprintjs/core";
 import { ClientServerBridge } from "../logic/ClientServerBridge";
 import { useServerContext } from "./SocketProvider";
+import { DevPasswordInput } from "./pass/password_dev";
+import { PasswordInput } from "./pass/password";
 
 
 export const NotificationToster = OverlayToaster.create({

@@ -13,6 +13,7 @@ import { mtdta_JSON_id, progress } from "../types/02_serv_t";
 import { PromptOverlay } from "./prompt_overlay";
 import { ClientServerBridge } from "../logic/ClientServerBridge";
 import { prompt_to_img2img, prompt_to_txt2img } from "../logic/dono_utils";
+import { ImageType } from "../types/01_node_t";
 
 interface RecipeOverlayWrapperProps {
     className?: string;
@@ -20,8 +21,8 @@ interface RecipeOverlayWrapperProps {
     title: string;
     on_close: () => void;
     on_progress: (prog_val: number) => void;
-    on_img_complete: (web_img64: img64, user_id: number) => void;
-    on_prompt_complete: (prompt: promptConfig) => void;
+    on_img_complete: (web_img64: img64, user_id: number, img_type: ImageType) => void;
+    on_prompt_complete: (prompt: promptConfig) => Promise<number>;
     ovelay_prompt: promptConfig;
     overlay_img: img64;
     edit_cond: boolean;
@@ -49,33 +50,33 @@ export const RecipeOverlayWrapper = ({
 		let web_img64 = result.txt2img.bulk.img;
         let metadata_id = result.txt2img.metadata.id;
         let decoded: mtdta_JSON_id = JSON.parse(metadata_id);
-		on_img_complete(web_img64, decoded.user_id)
+		on_img_complete(web_img64, decoded.user_id, ImageType.TXT2IMG)
 	}
 	const on_img2img_generation_finish = (result: img2img) => {
 		let web_img64 = result.img2img.bulk.img;
         let metadata_id = result.img2img.metadata.id;
         let decoded: mtdta_JSON_id = JSON.parse(metadata_id);
-		on_img_complete(web_img64, decoded.user_id)
+		on_img_complete(web_img64, decoded.user_id, ImageType.IMG2TXT)
     }
 
-	let startTxt2img = (prompt: promptConfig) => {
+	let startTxt2img = async (prompt: promptConfig) => {
 		on_close();
 		if (!edit_cond)
 			return
 		
-		on_prompt_complete(prompt)
+		let node_db_id = await on_prompt_complete(prompt)
 		ClientServerBridge.getInstance()
-			.send_txt2img(prompt_to_txt2img(prompt), on_generation_progress, on_txt2img_generation_finish)
+			.send_txt2img(prompt_to_txt2img(prompt, node_db_id), on_generation_progress, on_txt2img_generation_finish)
 	}
 
-	let startImg2img = (prompt: promptConfig, img_id: number) => {
+	let startImg2img = async (prompt: promptConfig, img_id: number) => {
 		on_close();
 		if (!edit_cond)
 			return
 
-		on_prompt_complete(prompt)
+        let node_db_id = await on_prompt_complete(prompt)
 		ClientServerBridge.getInstance()
-			.send_img2img(prompt_to_img2img(prompt, img_id), on_generation_progress, on_img2img_generation_finish)
+			.send_img2img(prompt_to_img2img(prompt, img_id, node_db_id), on_generation_progress, on_img2img_generation_finish)
 	}
 
 

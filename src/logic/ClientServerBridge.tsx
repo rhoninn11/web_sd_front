@@ -48,10 +48,10 @@ export class ClientServerBridge {
 		return this.connected;
 	}
 
-	private _init(port: number) {
+	private _init(ws_type: string, port: number) {
 		// get host name from web bar
 		let host = window.location.hostname;
-		const connect_string = `ws://${host}:${port}`;
+		const connect_string = `${ws_type}://${host}:${port}`;
 		console.log('+++ connecting to: ', connect_string);
 		this.client = new W3CWebSocket(connect_string);
 		this.client.onopen = () => {
@@ -68,16 +68,26 @@ export class ClientServerBridge {
 		this.client.onclose = () => {
 			console.log('--- Client Closed');
 			this._setIsConnected(false)
-			setTimeout(() => this._init(port), 500);
+			setTimeout(() => this._init(ws_type, port), 500);
 		}
 	}
 
 	public static getInstance(): ClientServerBridge {
 		if (!ClientServerBridge.instance) {
 			ClientServerBridge.instance = new ClientServerBridge();
+			let dev = import.meta.env.DEV
+			let prod = import.meta.env.PROD
+
 			let port = serverPort;
-			// let port = parseInt(window.location.port);
-			ClientServerBridge.instance._init(port);
+			let ws_type = "ws"
+
+			console.log("prod: ", prod, " dev: ", dev)
+			if (prod){
+				port = parseInt(window.location.port);
+				ws_type = "wss"
+			}
+
+			ClientServerBridge.instance._init(ws_type, port);
 		}
 
 		return ClientServerBridge.instance;
@@ -218,6 +228,4 @@ export class ClientServerBridge {
 	public sync_timestump_with_server(syncSignature: syncSignature, on_finish: (sync_syg: syncSignature) => void) {
 		this.sync_with_server(syncSignature, on_finish);
 	}
-
 }
-

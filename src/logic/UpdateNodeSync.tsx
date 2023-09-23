@@ -3,7 +3,7 @@ import { NodePosition } from "../types/00_flow_t";
 import { editDBNode, getDBNode } from "./db";
 import { promptConfig } from "../types/03_sd_t";
 import { ClientServerBridge } from "./ClientServerBridge";
-import { DBNode } from "../types/01_node_t";
+import { DBNode, ImageType } from "../types/01_node_t";
 
 
 class updateStruct {
@@ -154,17 +154,18 @@ export class UpdateNodeSync {
         this.run_update_and_reduce(id);
     }
 
-    private _update_result_img = async (id: number, img_id: number) => {
+    private _update_result_img = async (id: number, img_id: number, img_type: ImageType) => {
         return getDBNode(id).then(async (db_node) => {
             db_node.result_data.prompt_img_id = img_id;
+            db_node.result_data.prompt_img_type = img_type;
             await editDBNode(db_node.id, db_node);
             return;
         });
     }
 
-    public update_result_img(id: number, img_id: number) {
+    public update_result_img(id: number, img_id: number, img_type: ImageType) {
         let queue = this.get_update_struct_safe(id)
-        queue.update_queue.push(() => this._update_result_img(id, img_id));
+        queue.update_queue.push(() => this._update_result_img(id, img_id, img_type));
         this.run_update_and_reduce(id);
     }
 

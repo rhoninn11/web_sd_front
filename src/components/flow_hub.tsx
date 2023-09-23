@@ -377,11 +377,11 @@ const AddNodeOnEdgeDrop = () => {
 		const chain = new Promise<number>((resolve, reject) => {
 			ClientServerBridge.getInstance()
 				.sync_with_server(sync_data_in, (sync_data_out) => {
-					console.log("+HUB+ serv returned RT_SYNC")
+					// console.log("+HUB+ serv returned RT_SYNC")
 					if (sync_data_out.sync_op != sync_op)
 						return;
 
-					console.log(" +ISYNC+ node_id_arr", sync_data_out);
+					// console.log(" +ISYNC+ node_id_arr", sync_data_out);
 					if(sync_sygn_empty(sync_data_out)){
 						resolve(0);
 						return;
@@ -399,9 +399,9 @@ const AddNodeOnEdgeDrop = () => {
 	// chains
 	const sync_client_with_server = (s_sygn: syncSignature) => {
 		let { node_id_arr, edge_id_arr, img_id_arr } = s_sygn;
-		console.log(" +ISYNC+ node_id_arr", node_id_arr);
-		console.log(" +ISYNC+ edge_id_arr", edge_id_arr);
-		console.log(" +ISYNC+ img_id_arr", img_id_arr);
+		// console.log(" +ISYNC+ node_id_arr", node_id_arr);
+		// console.log(" +ISYNC+ edge_id_arr", edge_id_arr);
+		// console.log(" +ISYNC+ img_id_arr", img_id_arr);
 
 		let sync_chain = start_chain()
 			.then(() => sync_client_img_with_server(img_id_arr, add_img))
@@ -414,7 +414,7 @@ const AddNodeOnEdgeDrop = () => {
 
 	const sync_client_ts_with_server = (s_sygn: syncSignature) => {
 		let { node_id_arr } = s_sygn;
-		console.log(" +ITSSYNC+ node_data_arr", node_id_arr);
+		// console.log(" +ITSSYNC+ node_data_arr", node_id_arr);
 		let sync_chain = start_chain()
 			.then(() => sync_client_nodes_with_server(node_id_arr, edit_node))
 			.then(() => console.log('+INFO+ timpestump server synced'))
@@ -462,9 +462,9 @@ const AddNodeOnEdgeDrop = () => {
 
 	const rt_sync_loop = () => {
 
-		console.log("!!! RT SYNC (loop started)!!!")
+		// console.log("!!! RT SYNC (loop started)!!!")
 		RtServerSync().then((node_num) => {
-			console.log("!!! RT SYNC (loop finished)!!!")
+			// console.log("!!! RT SYNC (loop finished)!!!")
 			let update_time = 1000;
 			if (node_num > 0)
 				update_time = 0;
@@ -474,7 +474,7 @@ const AddNodeOnEdgeDrop = () => {
 
 	useEffect(() => {
 		if(synced){
-			console.log("!!! RT SYNC !!!")
+			// console.log("!!! RT SYNC !!!")
 			setTimeout(rt_sync_loop, 0);
 		}
 	}, [synced])

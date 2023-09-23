@@ -1,10 +1,11 @@
+import { mtdta_JSON_id } from "../types/02_serv_t";
 import { img2img, img64, promptConfig, txt2img } from "../types/03_sd_t";
 
-export const prompt_to_txt2img = (prompt: promptConfig): txt2img => {
+export const prompt_to_txt2img = (prompt: promptConfig, node_db_id: number): txt2img => {
 
     let txt_to_img: txt2img = {
         txt2img: {
-            metadata: { id: ''},
+            metadata: { id: JSON.stringify(new mtdta_JSON_id('', -1, node_db_id)) },
             bulk: { img: new img64() },
             config: prompt
         }
@@ -13,14 +14,14 @@ export const prompt_to_txt2img = (prompt: promptConfig): txt2img => {
     return txt_to_img;
 }
 
-export const prompt_to_img2img = (prompt: promptConfig, image_id: number): img2img => {
+export const prompt_to_img2img = (prompt: promptConfig, image_id: number, node_db_id: number): img2img => {
 
     let ref_img = new img64()
     ref_img.id = image_id;
 
     let img_to_img: img2img = {
         img2img: {
-            metadata: { id: ''},
+            metadata: { id: JSON.stringify(new mtdta_JSON_id('', -1, node_db_id))},
             bulk: { img: ref_img },
             config: prompt
         }

@@ -67,10 +67,7 @@ export class UserModule {
 			this._setUSerId(authData.user_id);
 
 			if (!authData.auth && this.auth_try_num > 0) {
-				setTimeout(() => {
-					this.allow_to_login = true;
-					this.askForAuth()
-				}, 500);
+				setTimeout(() => this.allow_to_login = true, 1000);
 				this.auth_try_num--;
 			}
 		}

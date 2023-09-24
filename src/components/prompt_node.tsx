@@ -39,6 +39,8 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 	const [resultImg, setResultImg] = useState(new img64());
 	const [resultImgFinished, setResultImgFinished] = useState(false);
 
+	const [resultImgType, setResultImgType] = useState(ImageType.NONE);
+
 	let is_owner = data.node_data.user_id == userId
 	let edit_cond = isAuthenticated && is_owner;
 
@@ -59,16 +61,18 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 
 
 	// result data
-	const set_result_img = (img: img64) => {
+	const set_result_img = (img: img64, img_type: ImageType) => {
+
 		setResultImgFinished(true);
 		setResultImg(img);
+		setResultImgType(img_type)
 	}
 
-	const try_fetch_result_img = async (img_id: number) => {
+	const try_fetch_result_img = async (img_id: number, img_type: ImageType) => {
 		if (img_id == -1)
 			return new Promise<void>((resolve, reject) => resolve());
 
-		return getDBImg(img_id).then((db_img) => set_result_img(db_img.img));
+		return getDBImg(img_id).then((db_img) => set_result_img(db_img.img, img_type));
 	}
 
 	const set_result_prompt = (prompt: promptConfig, finished: boolean) => {
@@ -79,7 +83,8 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 	const try_fetch_result_data = (prompt_ref: PromptReference) : Promise<void> => {
 		set_result_prompt(prompt_ref.prompt, prompt_ref.prompt_finished);
 		let result_img_id = prompt_ref.prompt_img_id;
-		return try_fetch_result_img(result_img_id);
+		let result_img_type = prompt_ref.prompt_img_type;
+		return try_fetch_result_img(result_img_id, result_img_type);
 	}
 
 	// initial data
@@ -144,7 +149,7 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 
 	const on_img_complete = async (web_img64: img64, user_id: number, img_type: ImageType) => {
 		await result_img_save2db(web_img64, user_id, img_type);
-		set_result_img(web_img64);
+		set_result_img(web_img64, img_type);
 		setProgress(0.0);
 	}
 
@@ -190,7 +195,7 @@ const _PromptNode = ({ data }: NodeProps<NodeConnData>) => {
 		refresh={async () => {
 			await try_fetch_initial_data()
 		}}
-		imgType={data.node_data.result_data.prompt_img_type} />
+		imgType={resultImgType} />
 
 	let show_progress_bar = resultPromptFinished && !resultImgFinished && edit_cond;
 	let progress_bar = show_progress_bar ? <ProgressBar value={progress} /> : null;

@@ -76,9 +76,7 @@ const AddNodeOnEdgeDrop = () => {
 	const [validUser, setValidUser] = useState(false);
 	const [userId, setUserId] = useState(-1);
 
-	const [synced, setSynced] = useState(false);
-
-	const {isConnected, isAuthenticated} = useServerContext();
+	const {isConnected, isAuthenticated, isSynced, setSynced, setSyncing} = useServerContext();
 
 	const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), []);
 
@@ -441,6 +439,7 @@ const AddNodeOnEdgeDrop = () => {
 			.then(() => setFlow(local_data))
 			.then(checkAuth)
 			.then((user_id) => user_id_data = user_id)
+			.then(() => setSyncing(true))
 			.then(() => initialServerSync(local_data))
 			.then((node_num) => node_num_data = node_num)
 			.then(() => inialTimestepServerSync())
@@ -473,11 +472,10 @@ const AddNodeOnEdgeDrop = () => {
 	}
 
 	useEffect(() => {
-		if(synced){
-			// console.log("!!! RT SYNC !!!")
+		if(isSynced){
 			setTimeout(rt_sync_loop, 0);
 		}
-	}, [synced])
+	}, [isSynced])
 
 
 	const move_obs = MoveObserver.getInstance();

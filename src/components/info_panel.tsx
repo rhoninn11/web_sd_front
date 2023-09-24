@@ -14,13 +14,16 @@ export const InfoPanel = ({
     children,
 }: InfoPanelProps) => {
 
-    const { isAuthenticated, isConnected, userId } = useServerContext();
+    const { isAuthenticated, isConnected, isSynced, isSyncing, userId } = useServerContext();
 
     let auth_text = isAuthenticated ? 'Authenticated' : 'Not authenticated'
     let auth_class = isAuthenticated ? styles_shered.grean_text : styles_shered.red_text;
 
     let connect_text = isConnected ? 'Connected' : 'Not connected'
     let connect_class = isConnected ? styles_shered.grean_text : styles_shered.red_text;
+
+    let sync_text = isSynced ? 'Synec' : isSyncing ? 'Syncing...' : 'Not synced'
+    let syncc_class = isSynced ? styles_shered.grean_text : isSyncing ? styles_shered.yellow_text : styles_shered.red_text;
 
     let user_id_text = isAuthenticated ? userId : '---'
 
@@ -41,6 +44,7 @@ export const InfoPanel = ({
         <div className={Classes.ELEVATION_1} style={{ padding: "10px" }}>
             <div className={connect_class}>{connect_text}</div>
             <div className={auth_class}>{auth_text}</div>
+            <div className={syncc_class}>{sync_text}</div>
             <div>User id: {user_id_text}</div>
             {login_option}
 
